@@ -1,8 +1,11 @@
+#include <stdio.h>
+
 #include <event.h>
 #include <evhttp.h>
 
 void gencb(struct evhttp_request * req, void * data)
 {
+	printf("%s\n", req->uri);
 }
 
 int main(int argc, char ** argv)
