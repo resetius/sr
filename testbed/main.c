@@ -179,7 +179,7 @@ void generate(int nwords, TextState * state, struct evbuffer *answer)
 {
 	State *sp;
 	Suffix *suf;
-	char *prefix[NPREF], *w;
+	char *prefix[NPREF], *w = 0;
 	int i, nmatch;
 
 	for (i = 0; i < NPREF; i++)     /* reset initial prefix */
@@ -218,7 +218,7 @@ void gencb(struct evhttp_request * req, void * data)
 	evbuffer_add_printf(buf, "<html><head></head><body>\n");
 	evbuffer_add_printf(buf, "<title>%d</title>\n", num);
 	generate(rand() % 5000, &text_state[rand() % num_states], buf);
-	evbuffer_add_printf(buf, "</body><html>\n");
+	evbuffer_add_printf(buf, "</body></html>\n");
 	evhttp_send_reply(req, HTTP_OK, "OK", buf);
 
 //	printf("%s\n", req->uri);
