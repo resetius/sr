@@ -175,12 +175,14 @@ void init_markov(const char * text_folder)
 }
 
 /* generate: produce output, one word per line */
-void generate(int nwords, TextState * state, struct evbuffer *answer)
+void generate(int nwords, TextState * state, int links_per_page, int links_total, struct evbuffer *answer)
 {
 	State *sp;
 	Suffix *suf;
 	char *prefix[NPREF], *w = 0;
 	int i, nmatch;
+	int link;
+	int p_open = 0;
 
 	for (i = 0; i < NPREF; i++)     /* reset initial prefix */
 		prefix[i] = NONWORD;
@@ -195,10 +197,31 @@ void generate(int nwords, TextState * state, struct evbuffer *answer)
 		if (strcmp(w, NONWORD) == 0)
 			break;
 
-		evbuffer_add_printf(answer, "%s ", w);
+		link = (rand() < (RAND_MAX / (links_per_page + 1)));
+
+		if (rand() < RAND_MAX / 50) {
+			if (p_open) {
+				evbuffer_add_printf(answer, "</p>\n");
+			}
+			evbuffer_add_printf(answer, "<p>\n");
+			p_open = 1;
+		}
+
+		if (link) {
+			evbuffer_add_printf(answer, "<a href=\"/%d.html\">", (int)(rand() % links_total));
+			evbuffer_add_printf(answer, "%s ", w);
+			evbuffer_add_printf(answer, "</a>");
+		} else {
+			evbuffer_add_printf(answer, "%s ", w);
+		}
+
 		if (rand() < RAND_MAX / 3) evbuffer_add_printf(answer, "\n");
 		memmove(prefix, prefix + 1, (NPREF - 1) * sizeof(prefix[0]));
 		prefix[NPREF - 1] = w;
+	}
+
+	if (p_open) {
+		evbuffer_add_printf(answer, "</p>\n");
 	}
 }
 
@@ -217,7 +240,11 @@ void gencb(struct evhttp_request * req, void * data)
 
 	evbuffer_add_printf(buf, "<html><head></head><body>\n");
 	evbuffer_add_printf(buf, "<title>%d</title>\n", num);
-	generate(rand() % 5000, &text_state[rand() % num_states], buf);
+	generate(rand() % 5000 /*words*/ , 
+			&text_state[rand() % num_states] /*base text*/, 
+			rand() %  50 /*links per page*/, 
+			rand() % 150 /*links total */,
+			buf);
 	evbuffer_add_printf(buf, "</body></html>\n");
 	evhttp_send_reply(req, HTTP_OK, "OK", buf);
 
