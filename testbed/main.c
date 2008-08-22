@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -41,6 +42,7 @@ struct TextState {
 	State   *statetab[NHASH];       /* hash table of states */
 };
 
+int num_states = 0;
 TextState text_state[MAXFILES];
 
 const int MULTIPLIER = 31;  /* for hash() */
@@ -115,7 +117,7 @@ void build_markov(char *prefix[NPREF], TextState * state, FILE *f)
 {
 	char buf[100], fmt[10];
 	/* create a format string; %s could overflow buf */
-	sprintf(fmt, "%%%ds", sizeof(buf)-1);
+	sprintf(fmt, "%%%lds", sizeof(buf)-1);
 	while (fscanf(f, fmt, buf) != EOF)
 		add(prefix, state, strdup(buf));
 }
@@ -168,14 +170,55 @@ void init_markov(const char * text_folder)
 			init_file(buf, num ++);
 		}
 	}
+
+	num_states = num;
+}
+
+/* generate: produce output, one word per line */
+void generate(int nwords, TextState * state, struct evbuffer *answer)
+{
+	State *sp;
+	Suffix *suf;
+	char *prefix[NPREF], *w;
+	int i, nmatch;
+
+	for (i = 0; i < NPREF; i++)     /* reset initial prefix */
+		prefix[i] = NONWORD;
+
+	for (i = 0; i < nwords; i++) {
+		sp = lookup(prefix, state->statetab, 0);
+		nmatch = 0;
+		for (suf = sp->suf; suf != NULL; suf = suf->next)
+			if (rand() % ++nmatch == 0) /* prob = 1/nmatch */
+				w = suf->word;
+
+		if (strcmp(w, NONWORD) == 0)
+			break;
+
+		evbuffer_add_printf(answer, "%s ", w);
+		if (rand() < RAND_MAX / 3) evbuffer_add_printf(answer, "\n");
+		memmove(prefix, prefix + 1, (NPREF - 1) * sizeof(prefix[0]));
+		prefix[NPREF - 1] = w;
+	}
 }
 
 void gencb(struct evhttp_request * req, void * data)
 {
 	struct evbuffer *buf = evbuffer_new();
 	const char * uri = evhttp_request_uri(req);
+	int num = 0;
 
-	evbuffer_add_printf(buf, "Requested: %s\n", uri);
+//	evbuffer_add_printf(buf, "Requested: %s\n", uri);
+
+	if (sscanf(uri, "/%d.html", &num) != 1) {
+		num = time(0);
+	}
+	srand(num);
+
+	evbuffer_add_printf(buf, "<html><head></head><body>\n");
+	evbuffer_add_printf(buf, "<title>%d</title>\n", num);
+	generate(rand() % 5000, &text_state[rand() % num_states], buf);
+	evbuffer_add_printf(buf, "</body><html>\n");
 	evhttp_send_reply(req, HTTP_OK, "OK", buf);
 
 //	printf("%s\n", req->uri);
