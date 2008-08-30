@@ -165,6 +165,7 @@ static Ideal * ideal_hashing_(State * state)
 	}
 	
 //	fprintf(stderr, "found size, hash: %d, %d\n", size, mult);
+	return r;
 }
 
 static void ideal_hashing(State *statetab[NHASH], int num)
