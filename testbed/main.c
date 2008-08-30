@@ -3,6 +3,8 @@
 #include <string.h>
 #include <time.h>
 
+#include <pthread.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -11,12 +13,14 @@
 #include <event.h>
 #include <evhttp.h>
 
+
 #define MAXFILES 1000
 #define MAXPATH 32768
 
 enum {
 	NPREF   = 2,    /* number of prefix words */
-	NHASH   = 4093, /* size of state hash table array */
+//	NHASH   = 4093, /* size of state hash table array */
+	NHASH   = 500000,
 	MAXGEN  = 1000  /* maximum words generated */
 };
 
@@ -54,10 +58,12 @@ unsigned int hash(char *s[NPREF])
 	unsigned char *p;
 	int i;
 
+	//h = 5381;
 	h = 0;
 	for (i = 0; i < NPREF; i++)
 		for (p = (unsigned char *) s[i]; *p != '\0'; p++)
 			h = MULTIPLIER * h + *p;
+			//h = (h << 5) + h + *p;
 	return h % NHASH;
 }
 
@@ -76,6 +82,8 @@ State* lookup(char *prefix[NPREF], State   **statetab, int create)
 				break;
 		if (i == NPREF)         /* found it */
 			return sp;
+
+//		printf("collision\n");
 	}
 	
 	if (create) {
@@ -240,28 +248,59 @@ void gencb(struct evhttp_request * req, void * data)
 
 	evbuffer_add_printf(buf, "<html><head></head><body>\n");
 	evbuffer_add_printf(buf, "<title>%d</title>\n", num);
-	generate(rand() % 5000 /*words*/ , 
-			&text_state[rand() % num_states] /*base text*/, 
-			rand() %  50 /*links per page*/, 
-			rand() % 150 /*links total */,
+
+	generate(rand() % 1000 /*words*/ , 
+			&text_state[rand() % num_states] /* base text */, 
+			1 + rand() %  50    /* links per page */, 
+			1 + rand() % 100000 /* links total    */,
 			buf);
 	evbuffer_add_printf(buf, "</body></html>\n");
+
+//	evbuffer_add_printf(buf, "test");
+
+	evhttp_add_header(req->output_headers, "Content-Type", "text/html; charset=windows-1251");
 	evhttp_send_reply(req, HTTP_OK, "OK", buf);
 
 //	printf("%s\n", req->uri);
 //	printf("%s\n", evhttp_find_header(req->input_headers, "Host"));
 }
 
+void * run_thr(void * arg)
+{
+	event_base_loop((struct event_base *)arg, 0);
+	return 0;
+}
+
 int main(int argc, char ** argv)
 {
-	struct event_base * base = event_init(); 
-	struct evhttp * http = evhttp_new(base);
-	evhttp_set_gencb(http, gencb, 0);
+	struct event_base * base1 = event_base_new(); 
+	struct event_base * base2 = event_base_new();
+	struct event_base *bases[3];
+	bases[0] = base1;
+	bases[1] = base2;
+	bases[2] = 0;
+
+	struct evhttp * http1 = evhttp_new(base1);
+//	struct evhttp * http2 = evhttp_new(base2);
+
+	pthread_t th1, th2;
+
+	evhttp_set_gencb(http1, gencb, 0);
+//	evhttp_set_gencb(http2, gencb, 0);
 
 	init_markov("./texts/");
 
-	evhttp_bind_socket(http, "0.0.0.0", 8083);
-	event_base_loop(base, 0);
+	evhttp_bind_socket(http1, "0.0.0.0", 8083);
+//	evhttp_bind_socket(http2, "0.0.0.0", 8083);
+
+	//event_base_loop(base, 0);
+
+	pthread_create(&th1, 0, run_thr, base1);
+//	pthread_create(&th2, 0, run_thr, base2);
+
+	pthread_join(th1, 0);
+//	pthread_join(th2, 0);
+
 	return 0;
 }
 
