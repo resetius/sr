@@ -85,15 +85,14 @@ void generate(int nwords,
 		}
 
 		if (link) {
-			evbuffer_add_printf(buf, "<a href=\"/%d.html\">",
-					(int)(rand() % links_total));
+			evbuffer_add_printf(buf, "<a href=\"/%d.html\">%s</a> ",
+								(int)(rand() % links_total), w);
 
 			/*buf_append(buf, "<a href=\"/");
 			buf_append_num(buf, (int)(rand() % links_total));
 			buf_append(buf, ".html\">");
 			buf_append(buf, w); 
 			buf_append(buf, "</a> ");*/
-			evbuffer_add_printf(buf, "</a> ");
 		} else {
 			//buf_append(buf, w); buf_append(buf, " ");
 			evbuffer_add_printf(buf, "%s ", w);
