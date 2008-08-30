@@ -17,6 +17,7 @@ extern "C" {
 	typedef struct State State;
 	typedef struct Suffix Suffix;
 	typedef struct TextState TextState;
+	typedef struct IdealState IdealState;
 
 	struct Suffix { /* list of suffixes */
 		const char    *word;                  /* suffix */
@@ -41,11 +42,17 @@ extern "C" {
 		int hash_num;
 	};
 
+	struct IdealState {
+		Ideal * statetab[NHASH];
+	};
+
 	extern const char * NONWORD;
 	extern TextState text_state[MAXFILES];
+	extern IdealState ideal_state[MAXFILES];
 	extern int num_states;
 
 	State* lookup(const char *prefix[NPREF], State   **statetab, int create);
+	State * lookup_ideal(const char * prefix[NPREF], Ideal ** ideal);
 	void init_markov(const char * text_folder);
 
 #ifdef __cplusplus

@@ -18,6 +18,7 @@
 const char * NONWORD = "\n";  /* cannot appear as real word */
 int num_states = 0;
 TextState text_state[MAXFILES];
+IdealState ideal_state[MAXFILES];
 
 const int MULTIPLIER = 31;  /* for hash() */
 
@@ -70,6 +71,17 @@ State* lookup(const char *prefix[NPREF], State   **statetab, int create)
 	return sp;
 }
 
+State * lookup_ideal(const char * prefix[NPREF], Ideal ** ideal)
+{
+	unsigned int h1;
+	unsigned int h2;
+
+	h1 = hash(prefix);
+	h2 = hash_(prefix, ideal[h1]->size, ideal[h1]->hash_num);
+
+	return &ideal[h1]->sub[h2];
+}
+
 /* addsuffix: add to state. suffix must not change later */
 void addsuffix(State *sp, const char *suffix)
 {
@@ -111,7 +123,7 @@ static Ideal * ideal_hashing_(State * state)
 	int mult = 1;
 	int col  = 0;
 
-	for (p = state; p != 0; p = state->next)
+	for (p = state; p != 0; p = p->next)
 	{
 		size += 1;
 	}
@@ -123,14 +135,14 @@ static Ideal * ideal_hashing_(State * state)
 	
 	memset(r->sub, 0, size * sizeof(State));
 
-	fprintf(stderr, " size: %d\n", size);
+//	fprintf(stderr, " size: %d\n", size);
 	
 	//check 100 hash functions
 	for (; mult < 100; ++mult) {
 		r->hash_num = mult;
 
 		col = 0;
-		for (p = state; !p; p = state->next) {
+		for (p = state; !p; p = p->next) {
 			unsigned int h = hash_(p->pref, size, mult);
 			if (r->sub[h].pref) {
 				//collision
@@ -148,21 +160,24 @@ static Ideal * ideal_hashing_(State * state)
 		}
 	}
 
-	fprintf(stderr, "found size, hash: %d, %d\n", size, mult);
+	if (col == 1) {
+		fprintf(stderr, "not found size, hash: %d, %d\n", size, mult);
+	}
+	
+//	fprintf(stderr, "found size, hash: %d, %d\n", size, mult);
 }
 
-static void ideal_hashing(State *statetab[NHASH])
+static void ideal_hashing(State *statetab[NHASH], int num)
 {
 	int i;
-	Ideal * statetab2[NHASH];
 	for (i = 0; i < NHASH; ++i)
 	{
 		if (!statetab[i]) {
-			statetab2[i] = 0;
+			ideal_state[num].statetab[i] = 0;
 			continue;
 		}
 
-		statetab2[i] = ideal_hashing_(statetab[i]);
+		ideal_state[num].statetab[i] = ideal_hashing_(statetab[i]);
 	}
 }
 
@@ -185,7 +200,7 @@ static void init_file(const char * buf, int num)
 	fclose(f);
 
 	fprintf(stderr, "ideal hashing\n");
-	ideal_hashing(text_state[num].statetab);
+	ideal_hashing(text_state[num].statetab, num);
 	fprintf(stderr, "ideal hashing done\n");
 }
 
