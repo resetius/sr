@@ -229,9 +229,9 @@ static void init_file(const char * buf, int num)
 	add(prefix, &text_state[num], (char*)NONWORD);
 	fclose(f);
 
-	fprintf(stderr, "ideal hashing\n");
-	ideal_hashing(text_state[num].statetab, num);
-	fprintf(stderr, "ideal hashing done\n");
+//	fprintf(stderr, "ideal hashing\n");
+//	ideal_hashing(text_state[num].statetab, num);
+//	fprintf(stderr, "ideal hashing done\n");
 }
 
 void init_markov(const char * text_folder)
@@ -264,4 +264,6 @@ void init_markov(const char * text_folder)
 	}
 
 	num_states = num;
+
+	fprintf(stderr, "server started\n");
 }

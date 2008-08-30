@@ -22,6 +22,8 @@ void generate(int nwords, TextState * state, int links_per_page,
 	int link;
 	int p_open = 0;
 
+	evbuffer_expand(answer, nwords * 50);
+
 	for (i = 0; i < NPREF; i++)     /* reset initial prefix */
 		prefix[i] = NONWORD;
 
@@ -47,20 +49,27 @@ void generate(int nwords, TextState * state, int links_per_page,
 		}
 
 		if (link) {
-			evbuffer_add_printf(answer, "<a href=\"/%d.html\">", (int)(rand() % links_total));
-			evbuffer_add_printf(answer, "%s ", w);
-			evbuffer_add_printf(answer, "</a>");
+//			evbuffer_add_printf(answer, "<a href=\"/%d.html\">", 
+//					(int)(rand() % links_total));
+//			evbuffer_add_printf(answer, "%s ", w);
+//			evbuffer_add_printf(answer, "</a>");
+			;
 		} else {
-			evbuffer_add_printf(answer, "%s ", w);
+//			evbuffer_add_printf(answer, "%s ", w);
+			;
 		}
 
-		if (rand() < RAND_MAX / 3) evbuffer_add_printf(answer, "\n");
+		if (rand() < RAND_MAX / 3) {
+			;
+//			evbuffer_add_printf(answer, "\n");
+		}
 		memmove(prefix, prefix + 1, (NPREF - 1) * sizeof(prefix[0]));
 		prefix[NPREF - 1] = w;
 	}
 
 	if (p_open) {
-		evbuffer_add_printf(answer, "</p>\n");
+		;
+//		evbuffer_add_printf(answer, "</p>\n");
 	}
 }
 
