@@ -30,9 +30,13 @@ static unsigned long hash_(const char *s[NPREF], int nhash, int mult)
 	int i;
 
 	h = 0;
-	for (i = 0; i < NPREF; i++)
-		for (p = (unsigned char *) s[i]; *p != '\0'; p++)
+	for (i = 0; i < NPREF; i++) {
+		for (p = (unsigned char *) s[i]; *p != '\0'; p++) {
 			h = mult * h + *p;
+		}
+		h = mult * h + 1;
+	}
+
 	return h % nhash;
 }
 
@@ -43,9 +47,12 @@ static unsigned long hash(const char *s[NPREF])
 	int i;
 
 	h = 5381;
-	for (i = 0; i < NPREF; i++)
-		for (p = (unsigned char *) s[i]; *p != '\0'; p++)
+	for (i = 0; i < NPREF; i++) {
+		for (p = (unsigned char *) s[i]; *p != '\0'; p++) {
 			h = (h << 5) + h + *p;
+		}
+		h = (h << 5) + h + 1;
+	}
 	return h % NHASH;
 }
 
@@ -84,11 +91,17 @@ State * lookup_ideal(const char * prefix[NPREF], Ideal ** ideal)
 {
 	unsigned long h1;
 	unsigned long h2;
+	Ideal * i;
 
 	h1 = hash(prefix);
-	h2 = hash_(prefix, ideal[h1]->size, ideal[h1]->hash_num);
 
-	return ideal[h1]->sub[h2];
+	i  = ideal[h1];
+	h2 = hash_(prefix, i->size, i->hash_num);
+
+	if (i->sub[h2] == 0) {
+		fprintf(stderr, "%s %s\n", prefix[0], prefix[1]);
+	}
+	return i->sub[h2];
 }
 
 /* addsuffix: add to state. suffix must not change later */
@@ -138,7 +151,7 @@ static Ideal * ideal_hashing_(State * state)
 		size1 += 1;
 	}
 
-	size = size1 * 3;
+	size = size1 * 10;
 	
 	r->sub  = malloc(size * sizeof(State *));
 	r->size = size;

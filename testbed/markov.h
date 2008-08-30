@@ -10,7 +10,7 @@ extern "C" {
 
 	enum {
 		NPREF   = 2,    /* number of prefix words */
-		NHASH   = 4093, /* size of state hash table array */
+		NHASH   = 40930, /* size of state hash table array */
 		MAXGEN  = 1000  /* maximum words generated */
 	};
 
