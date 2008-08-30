@@ -14,19 +14,17 @@ typedef struct Buffer Buffer;
 
 struct Buffer {
 	char * buf;
-	int size;
-	int pos;
+	unsigned int size;
+	unsigned int pos;
 };
 
 void buf_append(Buffer * buf, const char * w)
 {
-	char * dest = &buf->buf[buf->pos];
-	while (*w && *dest) {
-		*dest++ = *w++;
-		buf->pos ++;
+	while (*w && (buf->pos < buf->size)) {
+		buf->buf[buf->pos ++] = *w++;
 	}
 
-	if (!*dest) {
+	if (buf->pos == buf->size) {
 		buf->size *= 2;
 		buf->buf   = realloc(buf->buf, buf->size);
 		buf_append(buf, w);
@@ -35,10 +33,23 @@ void buf_append(Buffer * buf, const char * w)
 	buf->buf[buf->pos] = 0;
 }
 
+void buf_append_num(Buffer * buf, int num)
+{
+	char buf1[256];
+	sprintf(buf1, "%d", num);
+	buf_append(buf, buf1);
+}
+
 /* generate: produce output, one word per line */
 //void generate(int nwords, IdealState * state, int links_per_page,
-void generate(int nwords, TextState * state, int links_per_page,
-			  int links_total, struct evbuffer *answer)
+void generate(int nwords, 
+		TextState * state, 
+//		IdealState * state,
+		int links_per_page,
+		int links_total, 
+		//Buffer * buf
+		struct evbuffer * buf
+		)
 {
 	State *sp;
 	Suffix *suf;
@@ -47,14 +58,6 @@ void generate(int nwords, TextState * state, int links_per_page,
 	int link;
 	int p_open = 0;
 
-	Buffer buf;
-	evbuffer_expand(answer, nwords * 50);
-
-	
-	buf.size = nwords * 50;
-	buf.buf  = malloc(buf.size);
-	buf.pos  = 0;
-	
 	for (i = 0; i < NPREF; i++)     /* reset initial prefix */
 		prefix[i] = NONWORD;
 
@@ -73,76 +76,87 @@ void generate(int nwords, TextState * state, int links_per_page,
 
 		if (rand() < RAND_MAX / 50) {
 			if (p_open) {
-//				evbuffer_add_printf(answer, "</p>\n");
-				buf_append(&buf, "</p>\n");
+				evbuffer_add_printf(buf, "</p>\n");
+				//buf_append(buf, "</p>\n");
 			}
-//			evbuffer_add_printf(answer, "<p>\n");
-			buf_append(&buf, "<p>\n");
+			evbuffer_add_printf(buf, "<p>\n");
+			//buf_append(buf, "<p>\n");
 			p_open = 1;
 		}
 
 		if (link) {
-//			evbuffer_add_printf(answer, "<a href=\"/%d.html\">", 
-//					(int)(rand() % links_total));
-//			evbuffer_add_printf(answer, "%s ", w);
-//			evbuffer_add_printf(answer, "</a>");
+			evbuffer_add_printf(buf, "<a href=\"/%d.html\">",
+					(int)(rand() % links_total));
 
-			buf_append(&buf, "<a href=\"/10.html\">");
-			buf_append(&buf, w); buf_append(&buf, " ");
-			buf_append(&buf, "</a>");
-			;
+			/*buf_append(buf, "<a href=\"/");
+			buf_append_num(buf, (int)(rand() % links_total));
+			buf_append(buf, ".html\">");
+			buf_append(buf, w); 
+			buf_append(buf, "</a> ");*/
+			evbuffer_add_printf(buf, "</a> ");
 		} else {
-//			evbuffer_add_printf(answer, "%s ", w);
-			buf_append(&buf, w); buf_append(&buf, " ");
-			;
+			//buf_append(buf, w); buf_append(buf, " ");
+			evbuffer_add_printf(buf, "%s ", w);
 		}
 
 		if (rand() < RAND_MAX / 3) {
-			;
-//			evbuffer_add_printf(answer, "\n");
-			buf_append(&buf, "\n");
+			//buf_append(buf, "\n");
+			evbuffer_add_printf(buf, "\n");
 		}
 		memmove(prefix, prefix + 1, (NPREF - 1) * sizeof(prefix[0]));
 		prefix[NPREF - 1] = w;
 	}
 
 	if (p_open) {
-		;
-//		evbuffer_add_printf(answer, "</p>\n");
-		buf_append(&buf, "</p>\n");
+		//buf_append(buf, "</p>\n");
+		evbuffer_add_printf(buf, "</p>\n");
 	}
-
-	evbuffer_add_printf(answer, buf.buf);
 }
 
 void gencb(struct evhttp_request * req, void * data)
 {
-	struct evbuffer *buf = evbuffer_new();
+	struct evbuffer *answer = evbuffer_new();
 	const char * uri = evhttp_request_uri(req);
 	int num = 0;
-
-//	evbuffer_add_printf(buf, "Requested: %s\n", uri);
+	int nwords;
+//	Buffer buf;
 
 	if (sscanf(uri, "/%d.html", &num) != 1) {
 		num = time(0);
 	}
 	srand(num);
+	nwords   = rand() % 1000;
+//	buf.size = nwords * 10;
+//	buf.pos  = 0;
+//	buf.buf  = malloc(buf.size);
 
-	evbuffer_add_printf(buf, "<html><head></head><body>\n");
-	evbuffer_add_printf(buf, "<title>%d</title>\n", num);
+/*	buf_append(&buf, "<html><head></head><body>\n");
+	buf_append(&buf, "<title>");
+	buf_append_num(&buf, num);
+	buf_append(&buf, "</title>\n");*/
 
-	generate(rand() % 1000 /*words*/ , 
+	evbuffer_expand(answer, nwords * 10);
+	evbuffer_add_printf(answer, "<html><head></head><body>\n"
+			"<title>%d</title>\n", num);
+	generate(nwords,
 			 &text_state[rand() % num_states] /* base text */,
-			 //&ideal_state[rand() % num_states] /* base text */,
+			// &ideal_state[rand() % num_states] /* base text */,
 			1 + rand() %  50    /* links per page */, 
 			1 + rand() % 100000 /* links total    */,
-			buf);
-	evbuffer_add_printf(buf, "</body></html>\n");
+			//&buf
+			answer
+			);
+//	buf_append(&buf, "</body></html>\n");
+	evbuffer_add_printf(answer, "</body></html>\n");
 
-//	evbuffer_add_printf(buf, "test");
+//	evbuffer_expand(answer, buf.size);
+//	evbuffer_add_printf(answer, buf.buf);
 
-	evhttp_add_header(req->output_headers, "Content-Type", "text/html; charset=windows-1251");
-	evhttp_send_reply(req, HTTP_OK, "OK", buf);
+	evhttp_add_header(req->output_headers, "Content-Type", 
+			"text/html; charset=windows-1251");
+	evhttp_send_reply(req, HTTP_OK, "OK", answer);
+
+//	free(buf.buf);
 
 //	printf("%s\n", req->uri);
 //	printf("%s\n", evhttp_find_header(req->input_headers, "Host"));
