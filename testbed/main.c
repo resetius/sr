@@ -11,7 +11,8 @@
 #include "markov.h"
 
 /* generate: produce output, one word per line */
-void generate(int nwords, IdealState * state, int links_per_page,
+//void generate(int nwords, IdealState * state, int links_per_page,
+void generate(int nwords, TextState * state, int links_per_page,
 			  int links_total, struct evbuffer *answer)
 {
 	State *sp;
@@ -25,8 +26,8 @@ void generate(int nwords, IdealState * state, int links_per_page,
 		prefix[i] = NONWORD;
 
 	for (i = 0; i < nwords; i++) {
-//		sp = lookup(prefix, state->statetab, 0);
-		sp = lookup_ideal(prefix, state->statetab); 
+		sp = lookup(prefix, state->statetab, 0);
+//		sp = lookup_ideal(prefix, state->statetab); 
 		nmatch = 0;
 		for (suf = sp->suf; suf != NULL; suf = suf->next)
 			if (rand() % ++nmatch == 0) /* prob = 1/nmatch */
@@ -80,8 +81,8 @@ void gencb(struct evhttp_request * req, void * data)
 	evbuffer_add_printf(buf, "<title>%d</title>\n", num);
 
 	generate(rand() % 1000 /*words*/ , 
-			 //&text_state[rand() % num_states] /* base text */,
-			 &ideal_state[rand() % num_states] /* base text */,
+			 &text_state[rand() % num_states] /* base text */,
+			 //&ideal_state[rand() % num_states] /* base text */,
 			1 + rand() %  50    /* links per page */, 
 			1 + rand() % 100000 /* links total    */,
 			buf);
