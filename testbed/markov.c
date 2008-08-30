@@ -22,19 +22,22 @@ TextState text_state[MAXFILES];
 const int MULTIPLIER = 31;  /* for hash() */
 
 /* hash: compute hash value for array of NPREF strings */
-unsigned int hash(const char *s[NPREF])
+static unsigned int hash_(const char *s[NPREF], int nhash, int mult)
 {
 	unsigned int h;
 	unsigned char *p;
 	int i;
 
-	//h = 5381;
 	h = 0;
 	for (i = 0; i < NPREF; i++)
 		for (p = (unsigned char *) s[i]; *p != '\0'; p++)
-			h = MULTIPLIER * h + *p;
-			//h = (h << 5) + h + *p;
-	return h % NHASH;
+			h = mult * h + *p;
+	return h % nhash;
+}
+
+static unsigned int hash(const char *s[NPREF])
+{
+	return hash_(s, NHASH, MULTIPLIER);
 }
 
 /* lookup: search for prefix; create if requested. */
@@ -79,7 +82,7 @@ void addsuffix(State *sp, const char *suffix)
 }
 
 /* add: add word to suffix list, update prefix */
-void add(const char *prefix[NPREF], TextState * state, const char *suffix)
+static void add(const char *prefix[NPREF], TextState * state, const char *suffix)
 {
 	State *sp;
 
@@ -91,7 +94,7 @@ void add(const char *prefix[NPREF], TextState * state, const char *suffix)
 }
 
 /* build: read input, build prefix table */
-void build_markov(const char *prefix[NPREF], TextState * state, FILE *f)
+static void build_markov(const char *prefix[NPREF], TextState * state, FILE *f)
 {
 	char buf[100], fmt[10];
 	/* create a format string; %s could overflow buf */
@@ -100,7 +103,70 @@ void build_markov(const char *prefix[NPREF], TextState * state, FILE *f)
 		add(prefix, state, strdup(buf));
 }
 
-void init_file(const char * buf, int num)
+static Ideal * ideal_hashing_(State * state)
+{
+	State * p;
+	Ideal * r = malloc(sizeof(Ideal));
+	int size = 0;
+	int mult = 1;
+	int col  = 0;
+
+	for (p = state; p != 0; p = state->next)
+	{
+		size += 1;
+	}
+
+	size *= 2;
+	
+	r->sub  = malloc(size * sizeof(State));
+	r->size = size;
+	
+	memset(r->sub, 0, size * sizeof(State));
+
+	fprintf(stderr, " size: %d\n", size);
+	
+	//check 100 hash functions
+	for (; mult < 100; ++mult) {
+		r->hash_num = mult;
+
+		col = 0;
+		for (p = state; !p; p = state->next) {
+			unsigned int h = hash_(p->pref, size, mult);
+			if (r->sub[h].pref) {
+				//collision
+				memset(r->sub, 0, size * sizeof(State));
+				col = 1;
+				break;
+			}
+
+			memcpy(&r->sub[h], p, sizeof(State));
+		}
+
+		if (col == 0) {
+			//found !
+			break;
+		}
+	}
+
+	fprintf(stderr, "found size, hash: %d, %d\n", size, mult);
+}
+
+static void ideal_hashing(State *statetab[NHASH])
+{
+	int i;
+	Ideal * statetab2[NHASH];
+	for (i = 0; i < NHASH; ++i)
+	{
+		if (!statetab[i]) {
+			statetab2[i] = 0;
+			continue;
+		}
+
+		statetab2[i] = ideal_hashing_(statetab[i]);
+	}
+}
+
+static void init_file(const char * buf, int num)
 {
 	int i;
 	FILE * f;
@@ -116,8 +182,11 @@ void init_file(const char * buf, int num)
 
 	build_markov(prefix, &text_state[num], f);
 	add(prefix, &text_state[num], (char*)NONWORD);
-
 	fclose(f);
+
+	fprintf(stderr, "ideal hashing\n");
+	ideal_hashing(text_state[num].statetab);
+	fprintf(stderr, "ideal hashing done\n");
 }
 
 void init_markov(const char * text_folder)
