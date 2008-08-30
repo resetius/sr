@@ -23,9 +23,9 @@ IdealState ideal_state[MAXFILES];
 const int MULTIPLIER = 31;  /* for hash() */
 
 /* hash: compute hash value for array of NPREF strings */
-static unsigned int hash_(const char *s[NPREF], int nhash, int mult)
+static unsigned long hash_(const char *s[NPREF], int nhash, int mult)
 {
-	unsigned int h;
+	unsigned long h;
 	unsigned char *p;
 	int i;
 
@@ -36,9 +36,17 @@ static unsigned int hash_(const char *s[NPREF], int nhash, int mult)
 	return h % nhash;
 }
 
-static unsigned int hash(const char *s[NPREF])
+static unsigned long hash(const char *s[NPREF])
 {
-	return hash_(s, NHASH, MULTIPLIER);
+	unsigned long h;
+	unsigned char *p;
+	int i;
+
+	h = 5381;
+	for (i = 0; i < NPREF; i++)
+		for (p = (unsigned char *) s[i]; *p != '\0'; p++)
+			h = (h << 5) + h + *p;
+	return h % NHASH;
 }
 
 /* lookup: search for prefix; create if requested. */
@@ -46,7 +54,8 @@ static unsigned int hash(const char *s[NPREF])
 /*  creation doesn't strdup so strings mustn't change later. */
 State* lookup(const char *prefix[NPREF], State   **statetab, int create)
 {
-	int i, h;
+	int i;
+	unsigned long h;
 	State *sp;
 
 	h = hash(prefix);
@@ -73,13 +82,13 @@ State* lookup(const char *prefix[NPREF], State   **statetab, int create)
 
 State * lookup_ideal(const char * prefix[NPREF], Ideal ** ideal)
 {
-	unsigned int h1;
-	unsigned int h2;
+	unsigned long h1;
+	unsigned long h2;
 
 	h1 = hash(prefix);
 	h2 = hash_(prefix, ideal[h1]->size, ideal[h1]->hash_num);
 
-	return &ideal[h1]->sub[h2];
+	return ideal[h1]->sub[h2];
 }
 
 /* addsuffix: add to state. suffix must not change later */
@@ -119,39 +128,41 @@ static Ideal * ideal_hashing_(State * state)
 {
 	State * p;
 	Ideal * r = malloc(sizeof(Ideal));
-	int size = 0;
-	int mult = 1;
-	int col  = 0;
+	int size1 = 0;
+	int size  = 0;
+	int mult  = 1;
+	int col   = 0;
 
 	for (p = state; p != 0; p = p->next)
 	{
-		size += 1;
+		size1 += 1;
 	}
 
-	size *= 2;
+	size = size1 * 3;
 	
-	r->sub  = malloc(size * sizeof(State));
+	r->sub  = malloc(size * sizeof(State *));
 	r->size = size;
 	
-	memset(r->sub, 0, size * sizeof(State));
+	memset(r->sub, 0, size * sizeof(State *));
 
 //	fprintf(stderr, " size: %d\n", size);
 	
 	//check 100 hash functions
-	for (; mult < 100; ++mult) {
+	for (; mult < 10000; ++mult) {
 		r->hash_num = mult;
 
 		col = 0;
-		for (p = state; !p; p = p->next) {
-			unsigned int h = hash_(p->pref, size, mult);
-			if (r->sub[h].pref) {
+		for (p = state; p != 0; p = p->next) {
+			unsigned long h = hash_(p->pref, size, mult);
+			if (r->sub[h]) {
 				//collision
-				memset(r->sub, 0, size * sizeof(State));
+				memset(r->sub, 0, size * sizeof(State *));
 				col = 1;
+			//	fprintf(stderr, "h = %u\n", h);
 				break;
 			}
 
-			memcpy(&r->sub[h], p, sizeof(State));
+			r->sub[h] = p;
 		}
 
 		if (col == 0) {
@@ -161,8 +172,13 @@ static Ideal * ideal_hashing_(State * state)
 	}
 
 	if (col == 1) {
-		fprintf(stderr, "not found size, hash: %d, %d\n", size, mult);
+		fprintf(stderr, "not found size1, size, hash: %d, %d, %d\n", 
+				size1, size, mult);
+		for (p = state; p != 0; p = p->next) {
+			fprintf(stderr, "'%s %s'\n", p->pref[0], p->pref[1]);
+		}
 	}
+//	exit(1);
 	
 //	fprintf(stderr, "found size, hash: %d, %d\n", size, mult);
 	return r;
