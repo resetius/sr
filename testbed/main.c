@@ -10,6 +10,31 @@
 
 #include "markov.h"
 
+typedef struct Buffer Buffer;
+
+struct Buffer {
+	char * buf;
+	int size;
+	int pos;
+};
+
+void buf_append(Buffer * buf, const char * w)
+{
+	char * dest = &buf->buf[buf->pos];
+	while (*w && *dest) {
+		*dest++ = *w++;
+		buf->pos ++;
+	}
+
+	if (!*dest) {
+		buf->size *= 2;
+		buf->buf   = realloc(buf->buf, buf->size);
+		buf_append(buf, w);
+	}
+
+	buf->buf[buf->pos] = 0;
+}
+
 /* generate: produce output, one word per line */
 //void generate(int nwords, IdealState * state, int links_per_page,
 void generate(int nwords, TextState * state, int links_per_page,
@@ -22,8 +47,14 @@ void generate(int nwords, TextState * state, int links_per_page,
 	int link;
 	int p_open = 0;
 
+	Buffer buf;
 	evbuffer_expand(answer, nwords * 50);
 
+	
+	buf.size = nwords * 50;
+	buf.buf  = malloc(buf.size);
+	buf.pos  = 0;
+	
 	for (i = 0; i < NPREF; i++)     /* reset initial prefix */
 		prefix[i] = NONWORD;
 
@@ -42,9 +73,11 @@ void generate(int nwords, TextState * state, int links_per_page,
 
 		if (rand() < RAND_MAX / 50) {
 			if (p_open) {
-				evbuffer_add_printf(answer, "</p>\n");
+//				evbuffer_add_printf(answer, "</p>\n");
+				buf_append(&buf, "</p>\n");
 			}
-			evbuffer_add_printf(answer, "<p>\n");
+//			evbuffer_add_printf(answer, "<p>\n");
+			buf_append(&buf, "<p>\n");
 			p_open = 1;
 		}
 
@@ -53,15 +86,21 @@ void generate(int nwords, TextState * state, int links_per_page,
 //					(int)(rand() % links_total));
 //			evbuffer_add_printf(answer, "%s ", w);
 //			evbuffer_add_printf(answer, "</a>");
+
+			buf_append(&buf, "<a href=\"/10.html\">");
+			buf_append(&buf, w); buf_append(&buf, " ");
+			buf_append(&buf, "</a>");
 			;
 		} else {
 //			evbuffer_add_printf(answer, "%s ", w);
+			buf_append(&buf, w); buf_append(&buf, " ");
 			;
 		}
 
 		if (rand() < RAND_MAX / 3) {
 			;
 //			evbuffer_add_printf(answer, "\n");
+			buf_append(&buf, "\n");
 		}
 		memmove(prefix, prefix + 1, (NPREF - 1) * sizeof(prefix[0]));
 		prefix[NPREF - 1] = w;
@@ -70,7 +109,10 @@ void generate(int nwords, TextState * state, int links_per_page,
 	if (p_open) {
 		;
 //		evbuffer_add_printf(answer, "</p>\n");
+		buf_append(&buf, "</p>\n");
 	}
+
+	evbuffer_add_printf(answer, buf.buf);
 }
 
 void gencb(struct evhttp_request * req, void * data)
