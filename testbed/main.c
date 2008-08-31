@@ -163,44 +163,92 @@ void gencb(struct evhttp_request * req, void * data)
 
 #define THREADS 4
 
+struct Thread {
+	struct event_base * base;
+	pthread_t id;
+	int snd;
+	int rcv;
+};
+
+void thr_notify(int fd, short ev, void * arg)
+{
+	char buf[256];
+	read(fd, buf, 1);
+}
+
 void * run_thr(void * arg)
 {
-	event_base_loop((struct event_base *)arg, 0);
+	struct Thread * thread = arg;
+	struct event notify;
+	int fds[2];
+	pipe(fds);
+	thread->rcv = fds[0];
+	thread->snd = fds[1];
+
+	event_set(&notify, thread->rcv, 
+			EV_READ | EV_PERSIST, thr_notify, thread);
+	event_base_set(thread->base, &notify);
+	event_add(&notify, 0);
+	event_base_loop(thread->base, 0);
 	return 0;
 }
 
-int evhttp_bind_socket2(struct evhttp *http, const char *address, u_short port);
+struct HttpState {
+	int cur;
+	struct Thread * threads;
+};
+
+struct event_base * set_base_cb(void * arg)
+{
+	struct HttpState * state = arg;
+	struct event_base * base;
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+	pthread_mutex_lock(&mutex);
+	base = state->threads[state->cur].base;
+
+	state->cur ++;
+	if (state->cur == THREADS) {
+		state->cur = 0;
+	}
+	pthread_mutex_unlock(&mutex);
+
+//	printf("set base %p\n", base);
+
+	return base;
+}
 
 int main(int argc, char ** argv)
 {
 	int i;
-	struct event_base *bases[THREADS];
-	struct evhttp * https[THREADS];
-	pthread_t threads[THREADS];
+	struct Thread threads[THREADS];
+	struct event_base *main_base;
+	struct evhttp * http;
+	struct HttpState state;
 
-	for (i = 0; i < THREADS; ++i) {
-		bases[i] = event_base_new();
-		https[i] = evhttp_new(bases[i]);
-		evhttp_set_gencb(https[i], gencb, 0);
-	}
+	main_base = event_base_new();
 
-
+	http = evhttp_new(main_base);
+	evhttp_set_gencb(http, gencb, 0);
 
 	init_markov("./texts/");
 
-	int sock = evhttp_bind_socket2(https[0], "0.0.0.0", 8083);
+	int sock = evhttp_bind_socket(http, "0.0.0.0", 8083);
+
+	state.cur = 0;
+	state.threads = threads;
+	evhttp_set_base_cb(http, set_base_cb, &state);
 
 
 	for (i = 0; i < THREADS; ++i) {
-		evhttp_accept_socket(https[i], sock);
+		threads[i].base = event_base_new();
+		pthread_create(&threads[i].id, 0, run_thr, &threads[i]);
 	}
 
-	for (i = 0; i < THREADS; ++i) {
-		pthread_create(&threads[i], 0, run_thr, bases[i]);
-	}
+	event_base_loop(main_base, 0);
 
 	for (i = 0; i < THREADS; ++i) {
-		pthread_join(threads[i], 0);
+		pthread_join(threads[i].id, 0);
 	}
 	
 	return 0;
