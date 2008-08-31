@@ -161,42 +161,48 @@ void gencb(struct evhttp_request * req, void * data)
 //	printf("%s\n", evhttp_find_header(req->input_headers, "Host"));
 }
 
+#define THREADS 4
+
 void * run_thr(void * arg)
 {
 	event_base_loop((struct event_base *)arg, 0);
 	return 0;
 }
 
+int evhttp_bind_socket2(struct evhttp *http, const char *address, u_short port);
+
 int main(int argc, char ** argv)
 {
-	struct event_base * base1 = event_base_new(); 
-	struct event_base * base2 = event_base_new();
-	struct event_base *bases[3];
-	bases[0] = base1;
-	bases[1] = base2;
-	bases[2] = 0;
+	int i;
+	struct event_base *bases[THREADS];
+	struct evhttp * https[THREADS];
+	pthread_t threads[THREADS];
 
-	struct evhttp * http1 = evhttp_new(base1);
-//	struct evhttp * http2 = evhttp_new(base2);
+	for (i = 0; i < THREADS; ++i) {
+		bases[i] = event_base_new();
+		https[i] = evhttp_new(bases[i]);
+		evhttp_set_gencb(https[i], gencb, 0);
+	}
 
-	pthread_t th1, th2;
 
-	evhttp_set_gencb(http1, gencb, 0);
-//	evhttp_set_gencb(http2, gencb, 0);
 
 	init_markov("./texts/");
 
-	evhttp_bind_socket(http1, "0.0.0.0", 8083);
-//	evhttp_bind_socket(http2, "0.0.0.0", 8083);
+	int sock = evhttp_bind_socket2(https[0], "0.0.0.0", 8083);
 
-	//event_base_loop(base, 0);
 
-	pthread_create(&th1, 0, run_thr, base1);
-//	pthread_create(&th2, 0, run_thr, base2);
+	for (i = 0; i < THREADS; ++i) {
+		evhttp_accept_socket(https[i], sock);
+	}
 
-	pthread_join(th1, 0);
-//	pthread_join(th2, 0);
+	for (i = 0; i < THREADS; ++i) {
+		pthread_create(&threads[i], 0, run_thr, bases[i]);
+	}
 
+	for (i = 0; i < THREADS; ++i) {
+		pthread_join(threads[i], 0);
+	}
+	
 	return 0;
 }
 
