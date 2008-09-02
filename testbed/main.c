@@ -43,8 +43,8 @@ void buf_append_num(Buffer * buf, int num)
 /* generate: produce output, one word per line */
 //void generate(int nwords, IdealState * state, int links_per_page,
 void generate(int nwords, 
-		TextState * state, 
-//		IdealState * state,
+//		TextState * state, 
+		IdealState * state,
 		int links_per_page,
 		int links_total, 
 		unsigned int * seed,
@@ -63,8 +63,8 @@ void generate(int nwords,
 		prefix[i] = NONWORD;
 
 	for (i = 0; i < nwords; i++) {
-		sp = lookup(prefix, state->statetab, 0);
-//		sp = lookup_ideal(prefix, state->statetab); 
+//		sp = lookup(prefix, state->statetab, 0);
+		sp = lookup_ideal(prefix, state->statetab); 
 		nmatch = 0;
 		for (suf = sp->suf; suf != NULL; suf = suf->next)
 			if (rand_r(seed) % ++nmatch == 0) /* prob = 1/nmatch */
@@ -141,8 +141,8 @@ void gencb(struct evhttp_request * req, void * data)
 	evbuffer_add_printf(answer, "<html><head></head><body>\n"
 			"<title>%u</title>\n", seed);
 	generate(nwords,
-			 &text_state[rand_r(&seed) % num_states] /* base text */,
-			// &ideal_state[rand_r(&seed) % num_states] /* base text */,
+//			 &text_state[rand_r(&seed) % num_states] /* base text */,
+			 &ideal_state[rand_r(&seed) % num_states] /* base text */,
 			1 + rand_r(&seed) %  50    /* links per page */, 
 			1 + rand_r(&seed) % 100000 /* links total    */,
 			&seed,

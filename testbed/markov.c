@@ -230,8 +230,8 @@ static void init_file(const char * buf, int num)
 	fclose(f);
 
 //	fprintf(stderr, "ideal hashing\n");
-//	ideal_hashing(text_state[num].statetab, num);
-//	fprintf(stderr, "ideal hashing done\n");
+	ideal_hashing(text_state[num].statetab, num);
+	fprintf(stderr, "ideal hashing done\n");
 }
 
 void init_markov(const char * text_folder)
