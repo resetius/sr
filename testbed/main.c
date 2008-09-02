@@ -139,7 +139,7 @@ void gencb(struct evhttp_request * req, void * data)
 
 	evbuffer_expand(answer, nwords * 10);
 	evbuffer_add_printf(answer, "<html><head></head><body>\n"
-			"<title>%d</title>\n", seed);
+			"<title>%u</title>\n", seed);
 	generate(nwords,
 			 &text_state[rand_r(&seed) % num_states] /* base text */,
 			// &ideal_state[rand_r(&seed) % num_states] /* base text */,
