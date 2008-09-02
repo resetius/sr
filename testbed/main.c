@@ -47,6 +47,7 @@ void generate(int nwords,
 //		IdealState * state,
 		int links_per_page,
 		int links_total, 
+		unsigned int * seed,
 		//Buffer * buf
 		struct evbuffer * buf
 		)
@@ -66,15 +67,15 @@ void generate(int nwords,
 //		sp = lookup_ideal(prefix, state->statetab); 
 		nmatch = 0;
 		for (suf = sp->suf; suf != NULL; suf = suf->next)
-			if (rand() % ++nmatch == 0) /* prob = 1/nmatch */
+			if (rand_r(seed) % ++nmatch == 0) /* prob = 1/nmatch */
 				w = suf->word;
 
 		if (strcmp(w, NONWORD) == 0)
 			break;
 
-		link = (rand() < (RAND_MAX / (links_per_page + 1)));
+		link = (rand_r(seed) < (RAND_MAX / (links_per_page + 1)));
 
-		if (rand() < RAND_MAX / 50) {
+		if (rand_r(seed) < RAND_MAX / 50) {
 			if (p_open) {
 				evbuffer_add_printf(buf, "</p>\n");
 				//buf_append(buf, "</p>\n");
@@ -86,10 +87,10 @@ void generate(int nwords,
 
 		if (link) {
 			evbuffer_add_printf(buf, "<a href=\"/%d.html\">%s</a> ",
-								(int)(rand() % links_total), w);
+								(int)(rand_r(seed) % links_total), w);
 
 			/*buf_append(buf, "<a href=\"/");
-			buf_append_num(buf, (int)(rand() % links_total));
+			buf_append_num(buf, (int)(rand_r(seed) % links_total));
 			buf_append(buf, ".html\">");
 			buf_append(buf, w); 
 			buf_append(buf, "</a> ");*/
@@ -98,7 +99,7 @@ void generate(int nwords,
 			evbuffer_add_printf(buf, "%s ", w);
 		}
 
-		if (rand() < RAND_MAX / 3) {
+		if (rand_r(seed) < RAND_MAX / 3) {
 			//buf_append(buf, "\n");
 			evbuffer_add_printf(buf, "\n");
 		}
@@ -116,15 +117,17 @@ void gencb(struct evhttp_request * req, void * data)
 {
 	struct evbuffer *answer = evbuffer_new();
 	const char * uri = evhttp_request_uri(req);
-	int num = 0;
+	unsigned int seed = 0;
 	int nwords;
+
 //	Buffer buf;
 
-	if (sscanf(uri, "/%d.html", &num) != 1) {
-		num = time(0);
+	if (sscanf(uri, "/%u.html", &seed) != 1) {
+		seed = time(0);
 	}
-	srand(num);
-	nwords   = rand() % 1000;
+
+	nwords   = rand_r(&seed) % 1000;
+
 //	buf.size = nwords * 10;
 //	buf.pos  = 0;
 //	buf.buf  = malloc(buf.size);
@@ -136,12 +139,13 @@ void gencb(struct evhttp_request * req, void * data)
 
 	evbuffer_expand(answer, nwords * 10);
 	evbuffer_add_printf(answer, "<html><head></head><body>\n"
-			"<title>%d</title>\n", num);
+			"<title>%d</title>\n", seed);
 	generate(nwords,
-			 &text_state[rand() % num_states] /* base text */,
-			// &ideal_state[rand() % num_states] /* base text */,
-			1 + rand() %  50    /* links per page */, 
-			1 + rand() % 100000 /* links total    */,
+			 &text_state[rand_r(&seed) % num_states] /* base text */,
+			// &ideal_state[rand_r(&seed) % num_states] /* base text */,
+			1 + rand_r(&seed) %  50    /* links per page */, 
+			1 + rand_r(&seed) % 100000 /* links total    */,
+			&seed,
 			//&buf
 			answer
 			);
@@ -233,12 +237,11 @@ int main(int argc, char ** argv)
 
 	init_markov("./texts/");
 
-	int sock = evhttp_bind_socket(http, "0.0.0.0", 8083);
+	evhttp_set_base_cb(http, set_base_cb, &state);
+	evhttp_bind_socket(http, "0.0.0.0", 8083);
 
 	state.cur = 0;
 	state.threads = threads;
-	evhttp_set_base_cb(http, set_base_cb, &state);
-
 
 	for (i = 0; i < THREADS; ++i) {
 		threads[i].base = event_base_new();
