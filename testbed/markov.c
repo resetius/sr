@@ -72,8 +72,6 @@ State* lookup(const char *prefix[NPREF], State   **statetab, int create)
 				break;
 		if (i == NPREF)         /* found it */
 			return sp;
-
-//		printf("collision\n");
 	}
 	
 	if (create) {
@@ -185,15 +183,15 @@ static Ideal * ideal_hashing_(State * state)
 	}
 
 	if (col == 1) {
+		fprintf(stderr, "cannot build ideal hashing table!\n");
 		fprintf(stderr, "not found size1, size, hash: %d, %d, %d\n", 
 				size1, size, mult);
 		for (p = state; p != 0; p = p->next) {
 			fprintf(stderr, "'%s %s'\n", p->pref[0], p->pref[1]);
 		}
+		exit(1);
 	}
-//	exit(1);
 	
-//	fprintf(stderr, "found size, hash: %d, %d\n", size, mult);
 	return r;
 }
 
@@ -229,9 +227,10 @@ static void init_file(const char * buf, int num)
 	add(prefix, &text_state[num], (char*)NONWORD);
 	fclose(f);
 
-//	fprintf(stderr, "ideal hashing\n");
+#ifdef IDEAL_HASHING
 	ideal_hashing(text_state[num].statetab, num);
 	fprintf(stderr, "ideal hashing done\n");
+#endif
 }
 
 void init_markov(const char * text_folder)
