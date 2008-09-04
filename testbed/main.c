@@ -124,6 +124,13 @@ void gencb(struct evhttp_request * req, void * data)
 	const char * uri = evhttp_request_uri(req);
 	unsigned int seed = 0;
 	int nwords;
+	static int num = 0;
+
+	num ++;
+	printf("%d \n", num);
+	if (num % 2) {
+		return;
+	}
 
 //	Buffer buf;
 
