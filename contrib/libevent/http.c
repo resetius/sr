@@ -29,6 +29,10 @@
 #include "config.h"
 #endif
 
+//FIXME
+#include <pthread.h>
+static pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
+
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
@@ -1001,7 +1005,9 @@ evhttp_connection_free(struct evhttp_connection *evcon)
 
 	if (evcon->http_server != NULL) {
 		struct evhttp *http = evcon->http_server;
+		pthread_mutex_lock(&conn_lock);
 		TAILQ_REMOVE(&http->connections, evcon, next);
+		pthread_mutex_unlock(&conn_lock);
 	}
 
 	if (event_initialized(&evcon->close_ev))
@@ -2196,6 +2202,7 @@ accept_socket(int fd, short what, void *arg)
 	if (evutil_make_socket_nonblocking(nfd) < 0)
 		return;
 
+	//send it to another http (another thread)!
 	evhttp_get_request(http, nfd, (struct sockaddr *)&ss, addrlen);
 }
 
@@ -2572,7 +2579,9 @@ evhttp_get_request(struct evhttp *http, int fd,
 	 * we need to know which http server it belongs to.
 	 */
 	evcon->http_server = http;
+	pthread_mutex_lock(&conn_lock);
 	TAILQ_INSERT_TAIL(&http->connections, evcon, next);
+	pthread_mutex_unlock(&conn_lock);
 	
 	if (evhttp_associate_new_request_with_connection(evcon) == -1)
 		evhttp_connection_free(evcon);

@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <assert.h>
 
 #include <pthread.h>
 
@@ -256,14 +257,14 @@ struct event_base * set_base_cb(void * arg)
 	struct event_base * base;
 	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-	pthread_mutex_lock(&mutex);
+	assert(pthread_mutex_lock(&mutex) == 0);
 	base = state->threads[state->cur].base;
 
 	state->cur ++;
 	if (state->cur == THREADS) {
 		state->cur = 0;
 	}
-	pthread_mutex_unlock(&mutex);
+	assert(pthread_mutex_unlock(&mutex) == 0);
 
 //	printf("set base %p\n", base);
 
