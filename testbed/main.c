@@ -246,38 +246,13 @@ void * run_thr(void * arg)
 	return 0;
 }
 
-struct HttpState {
-	int cur;
-	struct Thread * threads;
-};
-
-struct event_base * set_base_cb(void * arg)
-{
-	struct HttpState * state = arg;
-	struct event_base * base;
-	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-	assert(pthread_mutex_lock(&mutex) == 0);
-	base = state->threads[state->cur].base;
-
-	state->cur ++;
-	if (state->cur == THREADS) {
-		state->cur = 0;
-	}
-	assert(pthread_mutex_unlock(&mutex) == 0);
-
-//	printf("set base %p\n", base);
-
-	return base;
-}
-
 int main(int argc, char ** argv)
 {
 	int i;
 	struct Thread threads[THREADS];
 	struct event_base *main_base;
 	struct evhttp * http;
-	struct HttpState state;
+	struct evhttp * https[THREADS];
 
 	main_base = event_base_new();
 
@@ -286,17 +261,15 @@ int main(int argc, char ** argv)
 
 	init_markov("./texts/");
 
-	evhttp_set_base_cb(http, set_base_cb, &state);
-	evhttp_bind_socket(http, "0.0.0.0", 8083);
-
-	state.cur = 0;
-	state.threads = threads;
-
 	for (i = 0; i < THREADS; ++i) {
 		threads[i].base = event_base_new();
+		https[i] = evhttp_new(threads[i].base);
+		evhttp_set_gencb(https[i], gencb, 0);
+		evhttp_add_worker(http, https[i]);
 		pthread_create(&threads[i].id, 0, run_thr, &threads[i]);
 	}
-
+	evhttp_close_worker(http);
+	evhttp_bind_socket(http, "0.0.0.0", 8083);
 	event_base_loop(main_base, 0);
 
 	for (i = 0; i < THREADS; ++i) {

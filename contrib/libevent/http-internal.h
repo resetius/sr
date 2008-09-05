@@ -81,7 +81,7 @@ struct evhttp_connection {
 
 	TAILQ_HEAD(evcon_requestq, evhttp_request) requests;
 	
-						   void (*cb)(struct evhttp_connection *, void *);
+	void (*cb)(struct evhttp_connection *, void *);
 	void *cb_arg;
 	
 	void (*closecb)(struct evhttp_connection *, void *);
@@ -124,8 +124,8 @@ struct evhttp {
 
 	struct event_base *base;
 
-	set_base_cb_t set_base_cb;
-	void * base_cb_data;
+	struct evhttp * next;
+	struct evhttp * cur;
 };
 
 /* resets the connection; can be reused for more requests */

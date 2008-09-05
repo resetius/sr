@@ -29,10 +29,6 @@
 #include "config.h"
 #endif
 
-//FIXME
-#include <pthread.h>
-static pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
-
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif
@@ -1005,9 +1001,7 @@ evhttp_connection_free(struct evhttp_connection *evcon)
 
 	if (evcon->http_server != NULL) {
 		struct evhttp *http = evcon->http_server;
-		pthread_mutex_lock(&conn_lock);
 		TAILQ_REMOVE(&http->connections, evcon, next);
-		pthread_mutex_unlock(&conn_lock);
 	}
 
 	if (event_initialized(&evcon->close_ev))
@@ -2202,8 +2196,9 @@ accept_socket(int fd, short what, void *arg)
 	if (evutil_make_socket_nonblocking(nfd) < 0)
 		return;
 
-	//send it to another http (another thread)!
-	evhttp_get_request(http, nfd, (struct sockaddr *)&ss, addrlen);
+	/* send it to another http (another thread) */
+	evhttp_get_request(http->cur, nfd, (struct sockaddr *)&ss, addrlen);
+	http->cur = http->cur->next;
 }
 
 int
@@ -2511,7 +2506,6 @@ evhttp_get_request_connection(
 {
 	struct evhttp_connection *evcon;
 	char *hostname = NULL, *portname = NULL;
-	struct event_base * con_base = http->base;
 
 	name_from_addr(sa, salen, &hostname, &portname);
 	event_debug(("%s: new request from %s:%s on %d\n",
@@ -2522,11 +2516,7 @@ evhttp_get_request_connection(
 		return (NULL);
 
 	/* associate the base if we have one*/
-
-	if (http->set_base_cb) {
-		con_base = http->set_base_cb(http->base_cb_data);
-	}
-	evhttp_connection_set_base(evcon, con_base);
+	evhttp_connection_set_base(evcon, http->base);
 
 	evcon->flags |= EVHTTP_CON_INCOMING;
 	evcon->state = EVCON_READING_FIRSTLINE;
@@ -2579,9 +2569,7 @@ evhttp_get_request(struct evhttp *http, int fd,
 	 * we need to know which http server it belongs to.
 	 */
 	evcon->http_server = http;
-	pthread_mutex_lock(&conn_lock);
 	TAILQ_INSERT_TAIL(&http->connections, evcon, next);
-	pthread_mutex_unlock(&conn_lock);
 	
 	if (evhttp_associate_new_request_with_connection(evcon) == -1)
 		evhttp_connection_free(evcon);
@@ -2791,9 +2779,17 @@ out:
 	return (res);
 }
 
-void evhttp_set_base_cb(struct evhttp * http, set_base_cb_t func, void * data)
+void evhttp_add_worker(struct evhttp * http, struct evhttp * worker)
 {
-	http->set_base_cb  = func;
-	http->base_cb_data = data;
+	while (http->next) http = http->next;
+	http->next = worker;
+}
+
+void evhttp_close_worker(struct evhttp * http)
+{
+	struct evhttp * cur = http;
+	while (cur->next) cur = cur->next;
+	cur->next = http->next;
+	http->cur = http->next;
 }
 
