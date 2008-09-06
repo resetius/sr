@@ -109,6 +109,7 @@ struct evhttp_bound_socket {
 	struct event  bind_ev;
 };
 
+/* for multiple workers: */
 struct task {
 	TAILQ_ENTRY(task) next;
 
@@ -122,19 +123,21 @@ struct evhttp {
 	TAILQ_HEAD(boundq, evhttp_bound_socket) sockets;
 
 	TAILQ_HEAD(httpcbq, evhttp_cb) callbacks;
-        struct evconq connections;
+	struct evconq connections;
 
-        int timeout;
+	int timeout;
 
 	void (*gencb)(struct evhttp_request *req, void *);
 	void *gencbarg;
 
 	struct event_base *base;
 
+	/* for multiple workers: */
 	pthread_mutex_t lock;
 	TAILQ_HEAD(taskq, task) tasks;
 	struct evhttp * next;
 	struct evhttp * cur;
+	struct event notify;
 	int wakeup;
 	int rcv;
 };

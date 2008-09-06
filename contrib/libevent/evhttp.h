@@ -114,9 +114,22 @@ int evhttp_accept_socket(struct evhttp *http, int fd);
  */
 void evhttp_free(struct evhttp* http);
 
-void evhttp_add_worker(struct evhttp * http, struct evhttp * worker, 
-		int /*send*/, int /*rcv*/);
-void evhttp_close_worker(struct evhttp * http);
+/**
+ * Add a worker.
+ *
+ * Usage:
+ * struct event_base * base = evhttp_add_worker(http);
+ * ...
+ * Then create worker thread and run:
+ * event_base_loop(base, flags);
+ *
+ * Functions evhttp_set_gencb, evhttp_del_cb, evhttp_set_cb, evhttp_set_timeout
+ * must be called AFTER evhttp_add_worker.
+ *
+ * @param http a pointer to an evhttp object.
+ * @return event_base on success, NULL on failure.
+ */
+struct event_base * evhttp_add_worker(struct evhttp * http);
 
 /** Set a callback for a specified URI */
 void evhttp_set_cb(struct evhttp *, const char *,

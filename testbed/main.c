@@ -217,36 +217,14 @@ void gencb(struct evhttp_request * req, void * data)
 
 #define THREADS 4
 
-struct Thread {
-	struct event_base * base;
-	struct evhttp * http;
-	pthread_t id;
-	int snd;
-	int rcv;
-};
-
-void thr_notify(int fd, short ev, void * arg)
-{
-	char buf[256];
-	read(fd, buf, 1);
-}
-
-void notify_worker(int fd, short ev, void * arg);
-
 void * run_thr(void * arg)
 {
-	struct Thread * thread = arg;
-	struct event notify;
+	struct event_base * base = arg;
 	int ret;
 
-	event_set(&notify, thread->rcv, 
-			EV_READ | EV_PERSIST, notify_worker, thread->http);
-	event_base_set(thread->base, &notify);
-	event_add(&notify, 0);
+	printf("base %p started\n", base);
 
-	printf("base %p started\n", thread->base);
-
-	ret = event_base_loop(thread->base, 0);
+	ret = event_base_loop(base, 0);
 
 	fprintf(stderr, "sipez %d, %d, %s\n", 
 			ret, errno, strerror(errno));
@@ -254,51 +232,33 @@ void * run_thr(void * arg)
 	return 0;
 }
 
-struct Thread threads[THREADS];
-
-void fill_thread(struct Thread * thread)
-{
-	int fds[2];
-	pipe(fds);
-	thread->rcv = fds[0];
-	thread->snd = fds[1];
-}
-
 int main(int argc, char ** argv)
 {
 	int i;
-	struct Thread threads[THREADS];
+	struct pthread_t threads[THREADS];
 	struct event_base *main_base;
 	struct evhttp * http;
-	struct evhttp * https[THREADS];
 
 	main_base = event_base_new();
 
 	http = evhttp_new(main_base);
-	evhttp_set_gencb(http, gencb, 0);
 
 	init_markov("./texts/");
 
 	for (i = 0; i < THREADS; ++i) {
-		threads[i].base = event_base_new();
-		fill_thread(&threads[i]);
-
-		https[i] = evhttp_new(threads[i].base);
-		threads[i].http = https[i];
-		evhttp_set_gencb(https[i], gencb, 0);
-		evhttp_add_worker(http, https[i], threads[i].snd, threads[i].rcv);
-		pthread_create(&threads[i].id, 0, run_thr, &threads[i]);
+		pthread_create(&threads[i], 0, run_thr, event_add_worker(http));
 	}
 
-	evhttp_close_worker(http);
+	evhttp_set_gencb(http, gencb, 0);
+
 	evhttp_bind_socket(http, "0.0.0.0", 8083);
 
 	event_base_loop(main_base, 0);
 
 	for (i = 0; i < THREADS; ++i) {
-		pthread_join(threads[i].id, 0);
+		pthread_join(threads[i], 0);
 	}
-	
+
 	return 0;
 }
 
