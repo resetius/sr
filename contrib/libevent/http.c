@@ -648,9 +648,8 @@ evhttp_connection_fail(struct evhttp_connection *evcon,
 		 * For HTTP problems, we might have to send back a
 		 * reply before the connection can be freed.
 		 */
-		if (evhttp_connection_incoming_fail(req, error) == -1) {
+		if (evhttp_connection_incoming_fail(req, error) == -1)
 			evhttp_connection_free(evcon);
-		}
 		return;
 	}
 
@@ -1679,9 +1678,8 @@ evhttp_connection_new(const char *address, unsigned short port)
 	return (evcon);
 	
  error:
-	if (evcon != NULL) {
+	if (evcon != NULL)
 		evhttp_connection_free(evcon);
-	}
 	return (NULL);
 }
 
@@ -2263,24 +2261,6 @@ evhttp_bind_socket(struct evhttp *http, const char *address, u_short port)
 			port));
 
 	return (res);
-}
-
-int 
-evhttp_bind_socket2(struct evhttp *http, const char *address, u_short port)
-{
-	int fd;
-
-	if ((fd = bind_socket(address, port, 1)) == 1) {
-		return -1;
-	}
-
-	if (listen(fd, 128) == -1) {
-		event_warn("%s: listen", __func__);
-		EVUTIL_CLOSESOCKET(fd);
-		return -1;
-	}
-
-	return fd;
 }
 
 int

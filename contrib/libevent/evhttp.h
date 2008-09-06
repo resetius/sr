@@ -367,8 +367,6 @@ void evhttp_parse_query(const char *uri, struct evkeyvalq *);
  */
 char *evhttp_htmlescape(const char *html);
 
-void evhttp_set_base_cb(struct evhttp * http, struct event_base * (*) (void *), void * data);
-
 #ifdef __cplusplus
 }
 #endif
