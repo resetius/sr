@@ -235,7 +235,7 @@ void * run_thr(void * arg)
 int main(int argc, char ** argv)
 {
 	int i;
-	struct pthread_t threads[THREADS];
+	pthread_t threads[THREADS];
 	struct event_base *main_base;
 	struct evhttp * http;
 
