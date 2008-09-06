@@ -199,7 +199,7 @@ extern int debug;
 static int socket_connect(int fd, const char *address, unsigned short port);
 static int bind_socket_ai(struct addrinfo *, int reuse);
 static int bind_socket(const char *, u_short, int reuse);
-static void name_from_addr(struct sockaddr *, socklen_t, char **, char **);
+static void name_from_addr(struct sockaddr *, socklen_t, char *, char *);
 static int evhttp_associate_new_request_with_connection(
 	struct evhttp_connection *evcon);
 static void evhttp_connection_start_detectclose(
@@ -648,8 +648,9 @@ evhttp_connection_fail(struct evhttp_connection *evcon,
 		 * For HTTP problems, we might have to send back a
 		 * reply before the connection can be freed.
 		 */
-		if (evhttp_connection_incoming_fail(req, error) == -1)
+		if (evhttp_connection_incoming_fail(req, error) == -1) {
 			evhttp_connection_free(evcon);
+		}
 		return;
 	}
 
@@ -1678,8 +1679,9 @@ evhttp_connection_new(const char *address, unsigned short port)
 	return (evcon);
 	
  error:
-	if (evcon != NULL)
+	if (evcon != NULL) {
 		evhttp_connection_free(evcon);
+	}
 	return (NULL);
 }
 
@@ -1843,8 +1845,9 @@ evhttp_send_done(struct evhttp_connection *evcon, void *arg)
 	} 
 
 	/* we have a persistent connection; try to accept another request. */
-	if (evhttp_associate_new_request_with_connection(evcon) == -1)
+	if (evhttp_associate_new_request_with_connection(evcon) == -1) {
 		evhttp_connection_free(evcon);
+	}
 }
 
 /*
@@ -2181,6 +2184,41 @@ evhttp_handle_request(struct evhttp_request *req, void *arg)
 }
 
 static void
+new_worker_task(struct evhttp * http, int fd, struct sockaddr_storage * ss)
+{
+	struct task * task = calloc(1, sizeof(struct task));
+	task->ss = *ss;
+	task->fd = fd;
+	//lock
+	pthread_mutex_lock(&http->lock);
+	TAILQ_INSERT_TAIL(&http->tasks, task, next);
+	pthread_mutex_unlock(&http->lock);
+	//unlock
+//	printf("task %p inserted to %p\n", task, http);
+//	printf("first task %p\n", TAILQ_FIRST(&http->tasks));
+}
+
+void notify_worker(int fd, short ev, void * arg)
+{
+	struct evhttp * http = arg;
+	struct task * task;
+	char byte;
+	if (read(http->rcv, &byte, 1) != 1) {
+		//ignore
+		return;
+	}
+	//lock
+	pthread_mutex_lock(&http->lock);
+	task = TAILQ_FIRST(&http->tasks);
+//	printf("remove task %p from %p\n", task, http);
+	TAILQ_REMOVE(&http->tasks, task, next);
+	pthread_mutex_unlock(&http->lock);
+	//unlock
+	evhttp_get_request(http, task->fd, (struct sockaddr *)&(task->ss), 
+			sizeof(struct sockaddr_storage));
+}
+
+static void
 accept_socket(int fd, short what, void *arg)
 {
 	struct evhttp *http = arg;
@@ -2196,9 +2234,14 @@ accept_socket(int fd, short what, void *arg)
 	if (evutil_make_socket_nonblocking(nfd) < 0)
 		return;
 
-	/* send it to another http (another thread) */
-	evhttp_get_request(http->cur, nfd, (struct sockaddr *)&ss, addrlen);
-	http->cur = http->cur->next;
+	if (!http->cur) {
+		evhttp_get_request(http, nfd, (struct sockaddr *)&ss, addrlen);
+	} else {
+		/* send it to worker thread */
+		new_worker_task(http->cur, nfd, &ss);
+		write(http->cur->wakeup, "", 1);
+		http->cur = http->cur->next;
+	}
 }
 
 int
@@ -2287,6 +2330,9 @@ evhttp_new_object(void)
 	TAILQ_INIT(&http->sockets);
 	TAILQ_INIT(&http->callbacks);
 	TAILQ_INIT(&http->connections);
+	TAILQ_INIT(&http->tasks);
+
+	pthread_mutex_init(&http->lock, 0);
 
 	return (http);
 }
@@ -2505,9 +2551,10 @@ evhttp_get_request_connection(
 	int fd, struct sockaddr *sa, socklen_t salen)
 {
 	struct evhttp_connection *evcon;
-	char *hostname = NULL, *portname = NULL;
+	char hostname[NI_MAXHOST], portname[NI_MAXSERV];
+	hostname[0] = portname[0] = 0;
 
-	name_from_addr(sa, salen, &hostname, &portname);
+	name_from_addr(sa, salen, hostname, portname);
 	event_debug(("%s: new request from %s:%s on %d\n",
 			__func__, hostname, portname, fd));
 
@@ -2609,15 +2656,15 @@ addr_from_name(char *address)
 
 static void
 name_from_addr(struct sockaddr *sa, socklen_t salen,
-    char **phost, char **pport)
+    char *ntop, char * strport)
 {
-	char ntop[NI_MAXHOST];
-	char strport[NI_MAXSERV];
+//	char ntop[NI_MAXHOST];
+//	char strport[NI_MAXSERV];
 	int ni_result;
 
 #ifdef HAVE_GETNAMEINFO
 	ni_result = getnameinfo(sa, salen,
-		ntop, sizeof(ntop), strport, sizeof(strport),
+		ntop, NI_MAXHOST, strport, NI_MAXSERV,
 		NI_NUMERICHOST|NI_NUMERICSERV);
 	
 	if (ni_result != 0) {
@@ -2634,8 +2681,8 @@ name_from_addr(struct sockaddr *sa, socklen_t salen,
 	if (ni_result != 0)
 			return;
 #endif
-	*phost = ntop;
-	*pport = strport;
+//	*phost = ntop;
+//	*pport = strport;
 }
 
 /* Either connect or bind */
@@ -2779,8 +2826,11 @@ out:
 	return (res);
 }
 
-void evhttp_add_worker(struct evhttp * http, struct evhttp * worker)
+void evhttp_add_worker(struct evhttp * http, struct evhttp * worker, 
+		int wakeup_fd, int rcv_fd)
 {
+	worker->wakeup = wakeup_fd;
+	worker->rcv    = rcv_fd;
 	while (http->next) http = http->next;
 	http->next = worker;
 }

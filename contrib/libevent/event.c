@@ -513,10 +513,10 @@ event_base_loop(struct event_base *base, int flags)
 		}
 		
 		/* If we have no events, we just exit */
-		if (!event_haveevents(base)) {
-			event_debug(("%s: no events registered.", __func__));
-			return (1);
-		}
+//		if (!event_haveevents(base)) {
+//			event_debug(("%s: no events registered.", __func__));
+//			return (1);
+//		}
 
 		/* update last old time */
 		gettime(base, &base->event_tv);

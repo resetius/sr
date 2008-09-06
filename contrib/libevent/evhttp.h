@@ -114,7 +114,8 @@ int evhttp_accept_socket(struct evhttp *http, int fd);
  */
 void evhttp_free(struct evhttp* http);
 
-void evhttp_add_worker(struct evhttp * http, struct evhttp * worker);
+void evhttp_add_worker(struct evhttp * http, struct evhttp * worker, 
+		int /*send*/, int /*rcv*/);
 void evhttp_close_worker(struct evhttp * http);
 
 /** Set a callback for a specified URI */

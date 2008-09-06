@@ -109,7 +109,14 @@ struct evhttp_bound_socket {
 	struct event  bind_ev;
 };
 
-typedef struct event_base * (* set_base_cb_t) (void *);
+struct task {
+	TAILQ_ENTRY(task) next;
+
+	struct sockaddr_storage ss;
+	int fd;
+};
+
+#include <pthread.h>
 
 struct evhttp {
 	TAILQ_HEAD(boundq, evhttp_bound_socket) sockets;
@@ -124,8 +131,12 @@ struct evhttp {
 
 	struct event_base *base;
 
+	pthread_mutex_t lock;
+	TAILQ_HEAD(taskq, task) tasks;
 	struct evhttp * next;
 	struct evhttp * cur;
+	int wakeup;
+	int rcv;
 };
 
 /* resets the connection; can be reused for more requests */

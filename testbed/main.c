@@ -45,6 +45,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 #include <assert.h>
 
 #include <pthread.h>
@@ -218,6 +219,7 @@ void gencb(struct evhttp_request * req, void * data)
 
 struct Thread {
 	struct event_base * base;
+	struct evhttp * http;
 	pthread_t id;
 	int snd;
 	int rcv;
@@ -229,21 +231,37 @@ void thr_notify(int fd, short ev, void * arg)
 	read(fd, buf, 1);
 }
 
+void notify_worker(int fd, short ev, void * arg);
+
 void * run_thr(void * arg)
 {
 	struct Thread * thread = arg;
 	struct event notify;
+	int ret;
+
+	event_set(&notify, thread->rcv, 
+			EV_READ | EV_PERSIST, notify_worker, thread->http);
+	event_base_set(thread->base, &notify);
+	event_add(&notify, 0);
+
+	printf("base %p started\n", thread->base);
+
+	ret = event_base_loop(thread->base, 0);
+
+	fprintf(stderr, "sipez %d, %d, %s\n", 
+			ret, errno, strerror(errno));
+	exit(1);
+	return 0;
+}
+
+struct Thread threads[THREADS];
+
+void fill_thread(struct Thread * thread)
+{
 	int fds[2];
 	pipe(fds);
 	thread->rcv = fds[0];
 	thread->snd = fds[1];
-
-	event_set(&notify, thread->rcv, 
-			EV_READ | EV_PERSIST, thr_notify, thread);
-	event_base_set(thread->base, &notify);
-	event_add(&notify, 0);
-	event_base_loop(thread->base, 0);
-	return 0;
 }
 
 int main(int argc, char ** argv)
@@ -263,13 +281,18 @@ int main(int argc, char ** argv)
 
 	for (i = 0; i < THREADS; ++i) {
 		threads[i].base = event_base_new();
+		fill_thread(&threads[i]);
+
 		https[i] = evhttp_new(threads[i].base);
+		threads[i].http = https[i];
 		evhttp_set_gencb(https[i], gencb, 0);
-		evhttp_add_worker(http, https[i]);
+		evhttp_add_worker(http, https[i], threads[i].snd, threads[i].rcv);
 		pthread_create(&threads[i].id, 0, run_thr, &threads[i]);
 	}
+
 	evhttp_close_worker(http);
 	evhttp_bind_socket(http, "0.0.0.0", 8083);
+
 	event_base_loop(main_base, 0);
 
 	for (i = 0; i < THREADS; ++i) {
