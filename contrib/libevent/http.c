@@ -2399,6 +2399,7 @@ evhttp_free(struct evhttp* http)
 			evhttp_free(cur);
 			cur = next;
 		} while (cur->next != http->next);
+		evhttp_free(cur);
 	}
 
 	free(http);
@@ -2416,6 +2417,7 @@ evhttp_set_timeout(struct evhttp* http, int timeout_in_secs)
 			evhttp_set_timeout(cur, timeout_in_secs);
 			cur = cur->next;
 		} while (cur->next != http->next);
+		evhttp_set_timeout(cur, timeout_in_secs);
 	}
 }
 
@@ -2441,6 +2443,7 @@ evhttp_set_cb(struct evhttp *http, const char *uri,
 			evhttp_set_cb(cur, uri, cb, cbarg);
 			cur = cur->next;
 		} while (cur->next != http->next);
+		evhttp_set_cb(cur, uri, cb, cbarg);
 	}
 }
 
@@ -2467,6 +2470,7 @@ evhttp_del_cb(struct evhttp *http, const char *uri)
 			evhttp_del_cb(cur, uri);
 			cur = cur->next;
 		} while (cur->next != http->next);
+		evhttp_del_cb(cur, uri);
 	}
 
 	return (0);
@@ -2486,6 +2490,7 @@ evhttp_set_gencb(struct evhttp *http,
 			evhttp_set_gencb(cur, cb, cbarg);
 			cur = cur->next;
 		} while (cur->next != http->next);
+		evhttp_set_gencb(cur, cb, cbarg);
 	}
 }
 
@@ -2877,7 +2882,6 @@ evhttp_add_worker(struct evhttp * http)
 	struct event_base * base = 0;
 	struct evhttp * worker = 0;
 	struct evhttp * cur;
-	struct evhttp_cb * http_cb;
 	int fds[2];
 
 	base = event_base_new();
@@ -2901,7 +2905,9 @@ evhttp_add_worker(struct evhttp * http)
 		worker->next = worker;
 	} else {
 		cur = http;
-		while (cur->next != http->next) cur = cur->next;
+		do {
+			cur = cur->next;
+		} while (cur->next != http->next);
 		cur->next    = worker;
 		worker->next = http->next;
 	}
