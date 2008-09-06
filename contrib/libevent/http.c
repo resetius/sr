@@ -1843,9 +1843,8 @@ evhttp_send_done(struct evhttp_connection *evcon, void *arg)
 	} 
 
 	/* we have a persistent connection; try to accept another request. */
-	if (evhttp_associate_new_request_with_connection(evcon) == -1) {
+	if (evhttp_associate_new_request_with_connection(evcon) == -1)
 		evhttp_connection_free(evcon);
-	}
 }
 
 /*
