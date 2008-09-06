@@ -246,7 +246,7 @@ int main(int argc, char ** argv)
 	init_markov("./texts/");
 
 	for (i = 0; i < THREADS; ++i) {
-		pthread_create(&threads[i], 0, run_thr, event_add_worker(http));
+		pthread_create(&threads[i], 0, run_thr, evhttp_add_worker(http));
 	}
 
 	evhttp_set_gencb(http, gencb, 0);
