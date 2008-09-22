@@ -61,7 +61,7 @@ def serverless():
         'tools.encode.on': True, 'tools.encode.encoding': 'utf-8',
         'tools.decode.on': True,
         'tools.trailing_slash.on': True,
-        'tools.staticdir.root': os.path.abspath(os.path.dirname(__file__),
+        'tools.staticdir.root': os.path.abspath(os.path.dirname(__file__)),
         'request.show_tracebacks': False,
         # Turn off signal handlers when CP does not control the OS process
         'engine.SIGTERM': None,
