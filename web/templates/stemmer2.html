@@ -4,10 +4,15 @@
 	</head>
 	<body>
 	  <form action="${root}stemmer2" method="post"> 
-		<textarea rows="25" cols="80" name="txt_from">${stem.txt_from}</textarea>
+		<p><b>Текст:</b><br/>
+		<textarea rows="25" cols="150"
+		name="txt_from">${stem.txt_from}</textarea>
+		</p>
 		<hr/>
-		<textarea rows="25" cols="80" name="txt_to">${stem.txt_to}</textarea>
+		<p><b>Результат:</b><br/>
+		<textarea rows="25" cols="150" name="txt_to">${stem.txt_to}</textarea><br/>
 		<input type="submit"/>
+		</p>
 	  </form>
 	</body>
 </html>
