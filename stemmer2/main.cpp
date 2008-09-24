@@ -38,6 +38,8 @@ void do_stem(Hunspell * h, struct sb_stemmer * sb, const char * word)
 		}
 
 		h->free_list(&stem, n);
+	} else {
+		printf("%s", word);
 	}
 }
 
