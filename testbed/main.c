@@ -211,6 +211,7 @@ void gencb(struct evhttp_request * req, void * data)
 	evhttp_add_header(req->output_headers, "Content-Type", 
 			"text/html; charset=windows-1251");
 	evhttp_send_reply(req, HTTP_OK, "OK", answer);
+	evbuffer_free(answer);
 
 //	free(buf.buf);
 }
