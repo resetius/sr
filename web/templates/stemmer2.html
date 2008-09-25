@@ -3,14 +3,13 @@
 		<title>$title</title>
 	</head>
 	<body>
-	  <form action="${root}stemmer2" method="post"> 
+	  <form action="${root}/stemmer2" method="post"> 
 		<p><b>Текст:</b><br/>
-		<textarea rows="20" cols="150"
+		<textarea rows="16" cols="115"
 		name="txt_from">${stem.txt_from}</textarea>
 		</p>
-		<hr/>
 		<p><b>Результат:</b><br/>
-		<textarea rows="20" cols="150" name="txt_to">${stem.txt_to}</textarea><br/>
+		<textarea rows="16" cols="115" name="txt_to">${stem.txt_to}</textarea><br/>
 		<input type="submit"/>
 		</p>
 	  </form>
