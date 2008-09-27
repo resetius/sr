@@ -2,7 +2,7 @@ project(stemmer2)
 
 set(EXECUTABLE_OUTPUT_PATH "../bin")
 
-include_directories(sb/include)
+include_directories(sb/include ${GLIB2_INCLUDE_DIR})
 add_subdirectory(sb)
 
 set(source main.cpp)
