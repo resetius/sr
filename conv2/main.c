@@ -214,6 +214,23 @@ void do_all(const char * dpath, int mode)
 	strcpy(ru_aff, dpath); strcat(ru_aff, "ru_RU.aff");
 	strcpy(ru_dic, dpath); strcat(ru_dic, "ru_RU.dic");
 
+	{
+		FILE * f = 0;
+		f = fopen(ru_aff, "rb");
+		if (!f) {
+			fprintf(stderr, "cannot open %s \n", ru_aff);
+			goto err;
+		}
+		fclose(f);
+
+		f = fopen(ru_dic, "rb");
+		if (!f) {
+			fprintf(stderr, "cannot open %s \n", ru_dic);
+			goto err;
+		}
+		fclose(f);
+	}
+
 	h = Hunspell_create(ru_aff, ru_dic);
 
 	if (!h) {
@@ -276,6 +293,8 @@ int main(int argc, char * argv[])
 			} else {
 				usage(argv[0]);
 			}
+		} else if (!strcmp(argv[i], "--help")) {
+			usage(argv[0]);
 		}
 	}
 

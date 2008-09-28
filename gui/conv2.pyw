@@ -11,13 +11,7 @@ import popen2
 import threading
 
 exe  = "..\\bin\\conv2.exe"
-dict = "..\\dict" 
-
-def writer(stream, data):
-	for d in data:
-		stream.write(d)
-		stream.flush()
-	stream.close()
+dict = "../dict/" 
 
 class Conv2(QWidget):
 	def __init__(self, parent = None):
@@ -28,33 +22,41 @@ class Conv2(QWidget):
 		QObject.connect(self.ui.pushButton, SIGNAL("clicked(bool)"), self.process)
 
 	def process(self):
-		cmd = "%s --dpath %s" % (exe, dict)
-
 		self.ui.errors.clear()
 		self.ui.output.clear()
-
-		cout, cin, cerr = popen2.popen3(cmd, mode = 'b')
 
 		s = self.ui.input.toPlainText()
 		s = unicode(s).encode("utf-8")
 
-		w = threading.Thread(target = writer, args = [cin, s])
-		w.start()
+		self.p = QProcess()
 
-		while True:			
-			try:
-				txt = unicode(cout.next(), "utf-8")
-				self.ui.output.appendPlainText(txt)
-			except StopIteration:
-				break
+		QObject.connect(self.p, SIGNAL("readyReadStandardOutput()"), self.write_output)
+		QObject.connect(self.p, SIGNAL("readyReadStandardError()"), self.write_errors)
 
-			try:
-				err = unicode(cerr.next(), "utf-8")
-				self.ui.errors.appendPlainText(txt)
-			except StopIteration:
-				pass
+		self.output = ""
+		self.p.start(exe, ["--dpath", dict])
+		self.p.waitForStarted()
+		self.p.write(s)
+		self.p.closeWriteChannel()
+		self.p.waitForFinished()
 
-		w.join()
+		self.ui.output.setPlainText(self.output)
+
+	def write_output(self):
+		data = self.p.readAllStandardOutput()
+		text = QString.fromUtf8(data.data())
+		self.ui.output.appendPlainText(text)
+		self.ui.output.moveCursor(QTextCursor.End)
+		self.repaint()
+
+		self.output += text
+
+	def write_errors(self):
+		data = self.p.readAllStandardError()
+		text = QString.fromUtf8(data.data())
+		self.ui.errors.appendPlainText(text)
+		self.ui.errors.moveCursor(QTextCursor.End)
+		self.repaint()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
