@@ -5,21 +5,27 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>677</width>
+    <width>681</width>
     <height>524</height>
    </rect>
   </property>
   <property name="windowTitle" >
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" >
-   <item>
+  <layout class="QGridLayout" name="gridLayout" >
+   <item row="0" column="0" >
     <widget class="QSplitter" name="splitter_2" >
      <property name="sizePolicy" >
       <sizepolicy vsizetype="Expanding" hsizetype="Expanding" >
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="maximumSize" >
+      <size>
+       <width>800</width>
+       <height>16777215</height>
+      </size>
      </property>
      <property name="orientation" >
       <enum>Qt::Horizontal</enum>
@@ -67,8 +73,39 @@
      </widget>
     </widget>
    </item>
-   <item>
+   <item row="1" column="0" >
     <layout class="QHBoxLayout" name="horizontalLayout" >
+     <item>
+      <widget class="QComboBox" name="comboBox" >
+       <property name="sizePolicy" >
+        <sizepolicy vsizetype="Fixed" hsizetype="Preferred" >
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize" >
+        <size>
+         <width>400</width>
+         <height>400</height>
+        </size>
+       </property>
+       <item>
+        <property name="text" >
+         <string>Auto</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>РЁРёСЂРѕРєР°СЏ СЌР»РµРєС‚СЂРёС„РёРєР°С†РёСЏ СЋР¶РЅС‹С… РіСѓР±РµСЂРЅРёР№ РґР°СЃС‚ РјРѕС‰РЅС‹Р№ С‚РѕР»С‡РѕРє РїРѕРґСЉРµРјСѓ СЃРµР»СЊСЃРєРѕРіРѕ С…РѕР·СЏР№СЃС‚РІР°</string>
+        </property>
+       </item>
+       <item>
+        <property name="text" >
+         <string>п╗п╦я─п╬п╨п╟я▐ я█п╩п╣п╨я┌я─п╦я└п╦п╨п╟я├п╦я▐ я▌п╤п╫я▀я┘ пЁя┐п╠п╣я─п╫п╦п╧ п╢п╟я│я┌ п╪п╬я┴п╫я▀п╧ я┌п╬п╩я┤п╬п╨ п©п╬п╢я┼п╣п╪я┐ я│п╣п╩я▄я│п╨п╬пЁп╬ я┘п╬п╥я▐п╧я│я┌п╡п╟</string>
+        </property>
+       </item>
+      </widget>
+     </item>
      <item>
       <spacer name="horizontalSpacer" >
        <property name="orientation" >
