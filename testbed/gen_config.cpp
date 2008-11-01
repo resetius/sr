@@ -35,6 +35,7 @@ load_defaults(struct GenConfig * conf)
 	conf->words_per_page = 1000;
 	conf->links_per_page = 50;
 	conf->links_total    = 100000;
+	conf->worker_threads = 1;
 }
 
 static void
@@ -44,6 +45,7 @@ print_config(struct GenConfig * conf)
 	fprintf(stderr, "words_per_page %d\n", conf->words_per_page);
 	fprintf(stderr, "links_per_page %d\n", conf->links_per_page);
 	fprintf(stderr, "links_total %d\n", conf->links_total);
+	fprintf(stderr, "worker_threads %d\n", conf->worker_threads);
 }
 
 void load_config(struct GenConfig * conf, const char * config_name)
@@ -54,6 +56,7 @@ void load_config(struct GenConfig * conf, const char * config_name)
 	config_try_set_int(c, "generator", "words_per_page", conf->words_per_page);
 	config_try_set_int(c, "generator", "links_per_page", conf->links_per_page);
 	config_try_set_int(c, "generator", "links_total", conf->links_total);
+	config_try_set_int(c, "generator", "worker_threads", conf->worker_threads);
 	print_config(conf);
 }
 

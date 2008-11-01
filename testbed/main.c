@@ -159,8 +159,6 @@ void gencb(struct evhttp_request * req, void * data)
 	evbuffer_free(answer);
 }
 
-#define THREADS 4
-
 void * run_thr(void * arg)
 {
 	struct event_base * base = arg;
@@ -179,11 +177,16 @@ void * run_thr(void * arg)
 int main(int argc, char ** argv)
 {
 	int i;
-	pthread_t threads[THREADS];
+	int nthreads = 1;
+	pthread_t * threads;
 	struct event_base *main_base;
 	struct evhttp * http;
 
 	load_config(&config, "gen.ini");
+
+	nthreads = config.worker_threads;
+	if (nthreads <= 0) nthreads = 1;
+	threads = malloc(nthreads * sizeof(pthread_t));
 
 	main_base = event_base_new();
 
@@ -191,7 +194,7 @@ int main(int argc, char ** argv)
 
 	init_markov("./texts/");
 
-	for (i = 0; i < THREADS; ++i) {
+	for (i = 0; i < nthreads; ++i) {
 		pthread_create(&threads[i], 0, run_thr, evhttp_add_worker(http));
 	}
 
@@ -201,9 +204,11 @@ int main(int argc, char ** argv)
 
 	event_base_loop(main_base, 0);
 
-	for (i = 0; i < THREADS; ++i) {
+	for (i = 0; i < nthreads; ++i) {
 		pthread_join(threads[i], 0);
 	}
+
+	free(threads);
 
 	return 0;
 }

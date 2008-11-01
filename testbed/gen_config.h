@@ -36,6 +36,7 @@ struct GenConfig {
 	int words_per_page;
 	int links_per_page;
 	int links_total;
+	int worker_threads;
 };
 
 void load_config(struct GenConfig * conf, const char * config);
