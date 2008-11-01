@@ -1,5 +1,3 @@
-#ifndef MY_CONFIG_H
-#define MY_CONFIG_H
 /*
  * Copyright 2008 Alexey Ozeritsky <aozeritsky@gmail.com>
  * All rights reserved.
@@ -26,16 +24,3 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include <map>
-#include <string>
-
-typedef std::map < std::string , std::string > config_section_t;
-typedef std::map < std::string , config_section_t > config_data_t;
-
-config_data_t config_load(const std::string & file_name);
-void config_try_set_int(config_data_t & r, const std::string & section,
-						const std::string & key, int & val);
-
-#endif /* MY_CONFIG_H */
-
