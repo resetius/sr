@@ -3,10 +3,9 @@
 
 class StemmerOut {
 public:
-
 	void * h_;
 
-StemmerOut(): h_(0), size(0), type(0), stem(0) {}
+	StemmerOut(): h_(0), size(0), type(0), stem(0) {}
 	~StemmerOut();
 
 	enum {
