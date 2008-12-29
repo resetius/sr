@@ -35,6 +35,7 @@ struct GenConfig {
 	int daemon_port;
 	int words_per_page;
 	int links_per_page;
+	double links_per_page_v;
 	int links_total;
 	int worker_threads;
 };

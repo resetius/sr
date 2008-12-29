@@ -95,7 +95,7 @@ void generate(int nwords,
 		if (strcmp(w, NONWORD) == 0)
 			break;
 
-		link = (rand_r(seed) < (RAND_MAX / (links_per_page + 1)));
+		link = (rand_r(seed) < (links_per_page));
 
 		if (rand_r(seed) < RAND_MAX / 50) {
 			if (p_open) {

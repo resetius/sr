@@ -88,3 +88,12 @@ config_try_set_int(config_data_t & r, const string & section,
 		val = atoi(r[section][key].c_str());
 	}
 }
+
+void config_try_set_double(config_data_t & r, const std::string & section,
+		                const std::string & key, double & val)
+{
+	if (r[section].find(key) != r[section].end()) {
+		val = atof(r[section][key].c_str());
+	}
+}
+

@@ -36,6 +36,8 @@ typedef std::map < std::string , config_section_t > config_data_t;
 config_data_t config_load(const std::string & file_name);
 void config_try_set_int(config_data_t & r, const std::string & section,
 						const std::string & key, int & val);
+void config_try_set_double(config_data_t & r, const std::string & section,
+		const std::string & key, double & val);
 
 #endif /* MY_CONFIG_H */
 

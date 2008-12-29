@@ -25,6 +25,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <stdlib.h>
 #include "my_config.h"
 #include "gen_config.h"
 
@@ -41,22 +42,29 @@ load_defaults(struct GenConfig * conf)
 static void
 print_config(struct GenConfig * conf)
 {
-	fprintf(stderr, "daemon_port %d\n", conf->daemon_port);
-	fprintf(stderr, "words_per_page %d\n", conf->words_per_page);
-	fprintf(stderr, "links_per_page %d\n", conf->links_per_page);
-	fprintf(stderr, "links_total %d\n", conf->links_total);
-	fprintf(stderr, "worker_threads %d\n", conf->worker_threads);
+	fprintf(stderr, "daemon_port %d\n",     conf->daemon_port);
+	fprintf(stderr, "words_per_page %d\n",  conf->words_per_page);
+	fprintf(stderr, "links_per_page %d\n",  conf->links_per_page);
+	fprintf(stderr, "links_per_page %lf\n", conf->links_per_page_v);
+	fprintf(stderr, "links_total %d\n",     conf->links_total);
+	fprintf(stderr, "worker_threads %d\n",  conf->worker_threads);
 }
 
 void load_config(struct GenConfig * conf, const char * config_name)
 {
 	load_defaults(conf);
 	config_data_t c = config_load(config_name);
-	config_try_set_int(c, "generator", "daemon_port", conf->daemon_port);
-	config_try_set_int(c, "generator", "words_per_page", conf->words_per_page);
-	config_try_set_int(c, "generator", "links_per_page", conf->links_per_page);
-	config_try_set_int(c, "generator", "links_total", conf->links_total);
-	config_try_set_int(c, "generator", "worker_threads", conf->worker_threads);
+	config_try_set_int(c, "generator", "daemon_port",       conf->daemon_port);
+	config_try_set_int(c, "generator", "words_per_page",    conf->words_per_page);
+	config_try_set_double(c, "generator", "links_per_page", conf->links_per_page_v);
+	config_try_set_int(c, "generator", "links_total",       conf->links_total);
+	config_try_set_int(c, "generator", "worker_threads",    conf->worker_threads);
+
+	if (conf->links_per_page_v <= 0 || conf->links_per_page_v >= 1.0) {
+		conf->links_per_page_v = 0.1;
+	}
+
+	conf->links_per_page = (int)((double)RAND_MAX * conf->links_per_page_v);
 	print_config(conf);
 }
 
