@@ -1,3 +1,5 @@
+#ifndef STEM_H
+#define STEM_H
 /*
  * Copyright 2008 Alexey Ozeritsky <aozeritsky@gmail.com>
  * All rights reserved.
@@ -25,52 +27,42 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
+class StemmerOut {
+public:
+	void * h_;
 
-#include "stem.h"
-#include "tok.h"
+	StemmerOut(): h_(0), size(0), type(0), stem(0) {}
+	~StemmerOut();
 
+	enum {
+		HUNSPELL = 1,
+		SNOWBALL = 2,
+	};
 
-void do_all()
-{
-	Stemmer s;
-	Tokenizer t(0);
-	Token tok;
+	int size;
+	int type;
 
-	while (t.next(tok)) {
-		switch (tok.type) {
-		case Token::ALNUM:
-			printf("%s", tok.word);
-			break;
-		case Token::DIGIT:
-			printf("%s", tok.word);
-			break;
-		case Token::BLANK:
-			printf("%s", tok.word);
-			break;
-		case Token::ALPHA:
-		case Token::RUS:
-		{
-			StemmerOut out = s.stem(tok);
-			printf("[%s: ", tok.word);
-			for (int i = 0; i < out.size; ++i) {
-				printf("%s, ", out.stem[i]);
-			}
-			printf(":%d", out.type);
-			printf("]");
-			break;
-		}
-		default:
-			printf("%s", tok.word);
-			break;
-		}
-	}
-}
+	/**
+	 * for (i = 0; i < size; ++i) {
+	 *    string = stem[i];
+	 *    ...
+	 * }
+	 */
+	char ** stem;
+};
 
-int main(int agrc, char * argv[])
-{
-	do_all();
+class Token;
 
-	return 0;
-}
+class Stemmer {
+	class PImpl;
+	PImpl * impl_;
+
+public:
+	Stemmer();
+	~Stemmer();
+
+	StemmerOut stem(const Token & tok);
+};
+
+#endif /* STEM_H */
 

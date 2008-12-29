@@ -1,3 +1,5 @@
+#ifndef MY_CONFIG_H
+#define MY_CONFIG_H
 /*
  * Copyright 2008 Alexey Ozeritsky <aozeritsky@gmail.com>
  * All rights reserved.
@@ -25,52 +27,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
+#include <map>
+#include <string>
 
-#include "stem.h"
-#include "tok.h"
+typedef std::map < std::string , std::string > config_section_t;
+typedef std::map < std::string , config_section_t > config_data_t;
 
+config_data_t config_load(const std::string & file_name);
+void config_try_set_int(config_data_t & r, const std::string & section,
+						const std::string & key, int & val);
+void config_try_set_double(config_data_t & r, const std::string & section,
+		const std::string & key, double & val);
 
-void do_all()
-{
-	Stemmer s;
-	Tokenizer t(0);
-	Token tok;
-
-	while (t.next(tok)) {
-		switch (tok.type) {
-		case Token::ALNUM:
-			printf("%s", tok.word);
-			break;
-		case Token::DIGIT:
-			printf("%s", tok.word);
-			break;
-		case Token::BLANK:
-			printf("%s", tok.word);
-			break;
-		case Token::ALPHA:
-		case Token::RUS:
-		{
-			StemmerOut out = s.stem(tok);
-			printf("[%s: ", tok.word);
-			for (int i = 0; i < out.size; ++i) {
-				printf("%s, ", out.stem[i]);
-			}
-			printf(":%d", out.type);
-			printf("]");
-			break;
-		}
-		default:
-			printf("%s", tok.word);
-			break;
-		}
-	}
-}
-
-int main(int agrc, char * argv[])
-{
-	do_all();
-
-	return 0;
-}
+#endif /* MY_CONFIG_H */
 

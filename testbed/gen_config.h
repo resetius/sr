@@ -1,3 +1,5 @@
+#ifndef GEN_CONFIG_H
+#define GEN_CONFIG_H
 /*
  * Copyright 2008 Alexey Ozeritsky <aozeritsky@gmail.com>
  * All rights reserved.
@@ -25,52 +27,24 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#include "stem.h"
-#include "tok.h"
+struct GenConfig {
+	int daemon_port;
+	int words_per_page;
+	int links_per_page;
+	double links_per_page_v;
+	int links_total;
+	int worker_threads;
+};
 
+void load_config(struct GenConfig * conf, const char * config);
 
-void do_all()
-{
-	Stemmer s;
-	Tokenizer t(0);
-	Token tok;
-
-	while (t.next(tok)) {
-		switch (tok.type) {
-		case Token::ALNUM:
-			printf("%s", tok.word);
-			break;
-		case Token::DIGIT:
-			printf("%s", tok.word);
-			break;
-		case Token::BLANK:
-			printf("%s", tok.word);
-			break;
-		case Token::ALPHA:
-		case Token::RUS:
-		{
-			StemmerOut out = s.stem(tok);
-			printf("[%s: ", tok.word);
-			for (int i = 0; i < out.size; ++i) {
-				printf("%s, ", out.stem[i]);
-			}
-			printf(":%d", out.type);
-			printf("]");
-			break;
-		}
-		default:
-			printf("%s", tok.word);
-			break;
-		}
-	}
+#ifdef __cplusplus
 }
+#endif
 
-int main(int agrc, char * argv[])
-{
-	do_all();
-
-	return 0;
-}
+#endif /* GEN_CONFIG_H */
 

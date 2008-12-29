@@ -25,52 +25,46 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdio.h>
+#include <stdlib.h>
+#include "my_config.h"
+#include "gen_config.h"
 
-#include "stem.h"
-#include "tok.h"
-
-
-void do_all()
+static void
+load_defaults(struct GenConfig * conf)
 {
-	Stemmer s;
-	Tokenizer t(0);
-	Token tok;
-
-	while (t.next(tok)) {
-		switch (tok.type) {
-		case Token::ALNUM:
-			printf("%s", tok.word);
-			break;
-		case Token::DIGIT:
-			printf("%s", tok.word);
-			break;
-		case Token::BLANK:
-			printf("%s", tok.word);
-			break;
-		case Token::ALPHA:
-		case Token::RUS:
-		{
-			StemmerOut out = s.stem(tok);
-			printf("[%s: ", tok.word);
-			for (int i = 0; i < out.size; ++i) {
-				printf("%s, ", out.stem[i]);
-			}
-			printf(":%d", out.type);
-			printf("]");
-			break;
-		}
-		default:
-			printf("%s", tok.word);
-			break;
-		}
-	}
+	conf->daemon_port    = 8083;
+	conf->words_per_page = 1000;
+	conf->links_per_page = 50;
+	conf->links_total    = 100000;
+	conf->worker_threads = 1;
 }
 
-int main(int agrc, char * argv[])
+static void
+print_config(struct GenConfig * conf)
 {
-	do_all();
+	fprintf(stderr, "daemon_port %d\n",     conf->daemon_port);
+	fprintf(stderr, "words_per_page %d\n",  conf->words_per_page);
+	fprintf(stderr, "links_per_page %d\n",  conf->links_per_page);
+	fprintf(stderr, "links_per_page %lf\n", conf->links_per_page_v);
+	fprintf(stderr, "links_total %d\n",     conf->links_total);
+	fprintf(stderr, "worker_threads %d\n",  conf->worker_threads);
+}
 
-	return 0;
+void load_config(struct GenConfig * conf, const char * config_name)
+{
+	load_defaults(conf);
+	config_data_t c = config_load(config_name);
+	config_try_set_int(c, "generator", "daemon_port",       conf->daemon_port);
+	config_try_set_int(c, "generator", "words_per_page",    conf->words_per_page);
+	config_try_set_double(c, "generator", "links_per_page", conf->links_per_page_v);
+	config_try_set_int(c, "generator", "links_total",       conf->links_total);
+	config_try_set_int(c, "generator", "worker_threads",    conf->worker_threads);
+
+	if (conf->links_per_page_v <= 0 || conf->links_per_page_v >= 1.0) {
+		conf->links_per_page_v = 0.1;
+	}
+
+	conf->links_per_page = (int)((double)RAND_MAX * conf->links_per_page_v);
+	print_config(conf);
 }
 

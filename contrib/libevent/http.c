@@ -2210,6 +2210,7 @@ notify_worker(int fd, short ev, void * arg)
 
 	evhttp_get_request(http, task->fd, (struct sockaddr *)&(task->ss), 
 			sizeof(struct sockaddr_storage));
+	free(task);
 }
 
 static void

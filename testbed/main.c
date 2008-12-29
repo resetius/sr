@@ -54,36 +54,9 @@
 #include <evhttp.h>
 
 #include "markov.h"
+#include "gen_config.h"
 
-typedef struct Buffer Buffer;
-
-struct Buffer {
-	char * buf;
-	unsigned int size;
-	unsigned int pos;
-};
-
-void buf_append(Buffer * buf, const char * w)
-{
-	while (*w && (buf->pos < buf->size)) {
-		buf->buf[buf->pos ++] = *w++;
-	}
-
-	if (buf->pos == buf->size) {
-		buf->size *= 2;
-		buf->buf   = realloc(buf->buf, buf->size);
-		buf_append(buf, w);
-	}
-
-	buf->buf[buf->pos] = 0;
-}
-
-void buf_append_num(Buffer * buf, int num)
-{
-	char buf1[256];
-	sprintf(buf1, "%d", num);
-	buf_append(buf, buf1);
-}
+static struct GenConfig config;
 
 /* generate: produce html-output */
 void generate(int nwords, 
@@ -95,7 +68,6 @@ void generate(int nwords,
 		int links_per_page,
 		int links_total, 
 		unsigned int * seed,
-		//Buffer * buf
 		struct evbuffer * buf
 		)
 {
@@ -123,34 +95,24 @@ void generate(int nwords,
 		if (strcmp(w, NONWORD) == 0)
 			break;
 
-		link = (rand_r(seed) < (RAND_MAX / (links_per_page + 1)));
+		link = (rand_r(seed) < (links_per_page));
 
 		if (rand_r(seed) < RAND_MAX / 50) {
 			if (p_open) {
 				evbuffer_add_printf(buf, "</p>\n");
-				//buf_append(buf, "</p>\n");
 			}
 			evbuffer_add_printf(buf, "<p>\n");
-			//buf_append(buf, "<p>\n");
 			p_open = 1;
 		}
 
 		if (link) {
 			evbuffer_add_printf(buf, "<a href=\"/%d.html\">%s</a> ",
 								(int)(rand_r(seed) % links_total), w);
-
-			/*buf_append(buf, "<a href=\"/");
-			buf_append_num(buf, (int)(rand_r(seed) % links_total));
-			buf_append(buf, ".html\">");
-			buf_append(buf, w); 
-			buf_append(buf, "</a> ");*/
 		} else {
-			//buf_append(buf, w); buf_append(buf, " ");
 			evbuffer_add_printf(buf, "%s ", w);
 		}
 
 		if (rand_r(seed) < RAND_MAX / 3) {
-			//buf_append(buf, "\n");
 			evbuffer_add_printf(buf, "\n");
 		}
 		memmove(prefix, prefix + 1, (NPREF - 1) * sizeof(prefix[0]));
@@ -158,7 +120,6 @@ void generate(int nwords,
 	}
 
 	if (p_open) {
-		//buf_append(buf, "</p>\n");
 		evbuffer_add_printf(buf, "</p>\n");
 	}
 }
@@ -170,22 +131,11 @@ void gencb(struct evhttp_request * req, void * data)
 	unsigned int seed = 0;
 	int nwords;
 
-//	Buffer buf;
-
 	if (sscanf(uri, "/%u.html", &seed) != 1) {
 		seed = time(0);
 	}
 
-	nwords   = rand_r(&seed) % 1000;
-
-//	buf.size = nwords * 10;
-//	buf.pos  = 0;
-//	buf.buf  = malloc(buf.size);
-
-/*	buf_append(&buf, "<html><head></head><body>\n");
-	buf_append(&buf, "<title>");
-	buf_append_num(&buf, num);
-	buf_append(&buf, "</title>\n");*/
+	nwords   = rand_r(&seed) % config.words_per_page;
 
 	evbuffer_expand(answer, nwords * 10);
 	evbuffer_add_printf(answer, "<html><head></head><body>\n"
@@ -194,29 +144,20 @@ void gencb(struct evhttp_request * req, void * data)
 #ifdef IDEAL_HASHING
 			 &ideal_state[rand_r(&seed) % num_states] /* base text */,
 #else
-			 &text_state[rand_r(&seed) % num_states] /* base text */,
+			 &text_state[rand_r(&seed) % num_states]  /* base text */,
 #endif
-			1 + rand_r(&seed) %  50    /* links per page */, 
-			1 + rand_r(&seed) % 100000 /* links total    */,
+			1 + rand_r(&seed) %  config.links_per_page   /* links per page */, 
+			1 + rand_r(&seed) % config.links_total       /* links total    */,
 			&seed,
-			//&buf
 			answer
 			);
-//	buf_append(&buf, "</body></html>\n");
 	evbuffer_add_printf(answer, "</body></html>\n");
-
-//	evbuffer_expand(answer, buf.size);
-//	evbuffer_add_printf(answer, buf.buf);
 
 	evhttp_add_header(req->output_headers, "Content-Type", 
 			"text/html; charset=windows-1251");
 	evhttp_send_reply(req, HTTP_OK, "OK", answer);
 	evbuffer_free(answer);
-
-//	free(buf.buf);
 }
-
-#define THREADS 4
 
 void * run_thr(void * arg)
 {
@@ -236,9 +177,16 @@ void * run_thr(void * arg)
 int main(int argc, char ** argv)
 {
 	int i;
-	pthread_t threads[THREADS];
+	int nthreads = 1;
+	pthread_t * threads;
 	struct event_base *main_base;
 	struct evhttp * http;
+
+	load_config(&config, "gen.ini");
+
+	nthreads = config.worker_threads;
+	if (nthreads <= 0) nthreads = 1;
+	threads = malloc(nthreads * sizeof(pthread_t));
 
 	main_base = event_base_new();
 
@@ -246,19 +194,21 @@ int main(int argc, char ** argv)
 
 	init_markov("./texts/");
 
-	for (i = 0; i < THREADS; ++i) {
+	for (i = 0; i < nthreads; ++i) {
 		pthread_create(&threads[i], 0, run_thr, evhttp_add_worker(http));
 	}
 
 	evhttp_set_gencb(http, gencb, 0);
 
-	evhttp_bind_socket(http, "0.0.0.0", 8083);
+	evhttp_bind_socket(http, "0.0.0.0", config.daemon_port);
 
 	event_base_loop(main_base, 0);
 
-	for (i = 0; i < THREADS; ++i) {
+	for (i = 0; i < nthreads; ++i) {
 		pthread_join(threads[i], 0);
 	}
+
+	free(threads);
 
 	return 0;
 }
