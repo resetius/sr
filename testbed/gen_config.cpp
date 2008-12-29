@@ -36,6 +36,9 @@ load_defaults(struct GenConfig * conf)
 	conf->words_per_page = 1000;
 	conf->links_total    = 100000;
 	conf->worker_threads = 1;
+	conf->extern_links_prefix  = strdup("serv");
+	conf->extern_links_suffix  = strdup(".testbed.local");
+	conf->extern_links_servers = 1;
 }
 
 static void
@@ -47,12 +50,19 @@ print_config(struct GenConfig * conf)
 	fprintf(stderr, "extern links %d\n",    conf->extern_links);
 	fprintf(stderr, "intern probabil %lf\n",conf->intern_links_probability);
 	fprintf(stderr, "extern probabil %lf\n",conf->extern_links_probability);
+	fprintf(stderr, "extern links prefix %s\n",
+			conf->extern_links_prefix);
+	fprintf(stderr, "extern links suffix %s\n",
+			conf->extern_links_suffix);
+	fprintf(stderr, "extern links servers %d\n",
+			conf->extern_links_servers);
 	fprintf(stderr, "links_total %d\n",     conf->links_total);
 	fprintf(stderr, "worker_threads %d\n",  conf->worker_threads);
 }
 
 void load_config(struct GenConfig * conf, const char * config_name)
 {
+	std::string tmp1, tmp2;
 	load_defaults(conf);
 	config_data_t c = config_load(config_name);
 	config_try_set_int(c, "generator", "daemon_port",       conf->daemon_port);
@@ -63,6 +73,16 @@ void load_config(struct GenConfig * conf, const char * config_name)
 			conf->intern_links_probability);
 	config_try_set_int(c, "generator", "links_total",       conf->links_total);
 	config_try_set_int(c, "generator", "worker_threads",    conf->worker_threads);
+
+	config_try_set_str(c, "generator", "extern_links_prefix", tmp1);
+	config_try_set_str(c, "generator", "extern_links_suffix", tmp2);
+	config_try_set_int(c, "generator", "extern_links_servers", 
+			conf->extern_links_servers);
+
+	if (!tmp1.empty() && tmp2.empty()) {
+		conf->extern_links_prefix = strdup(tmp1.c_str());
+		conf->extern_links_suffix = strdup(tmp2.c_str());
+	}
 
 	if (conf->intern_links_probability <= 0 || 
 			conf->intern_links_probability >= 1.0) 

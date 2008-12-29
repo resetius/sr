@@ -1,7 +1,7 @@
 #ifndef MY_CONFIG_H
 #define MY_CONFIG_H
 /*
- * Copyright 2008 Alexey Ozeritsky <aozeritsky@gmail.com>
+ * Copyright 2008, 2009 Alexey Ozeritsky <aozeritsky@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -38,6 +38,9 @@ void config_try_set_int(config_data_t & r, const std::string & section,
 						const std::string & key, int & val);
 void config_try_set_double(config_data_t & r, const std::string & section,
 		const std::string & key, double & val);
+
+void config_try_set_str(config_data_t & r, const std::string & section,
+		const std::string & key, std::string & str);
 
 #endif /* MY_CONFIG_H */
 

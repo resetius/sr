@@ -97,3 +97,11 @@ void config_try_set_double(config_data_t & r, const std::string & section,
 	}
 }
 
+void config_try_set_str(config_data_t & r, const std::string & section,
+		const std::string & key, std::string & str)
+{
+	if (r[section].find(key) != r[section].end()) {
+		str = r[section][key];
+	}
+}
+

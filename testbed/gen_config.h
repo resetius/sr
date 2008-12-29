@@ -38,6 +38,9 @@ struct GenConfig {
 	int extern_links;
 	double intern_links_probability;
 	double extern_links_probability;
+	char * extern_links_prefix;
+	char * extern_links_suffix;
+	int extern_links_servers;
 	int links_total;
 	int worker_threads;
 };

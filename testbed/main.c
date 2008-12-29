@@ -68,6 +68,9 @@ void generate(int nwords,
 		int intern_links,
 		int extern_links,
 		int links_total, 
+		char * ext_prefix,
+		char * ext_suffix,
+		int ext_servers,
 		unsigned int * seed,
 		struct evbuffer * buf
 		)
@@ -108,9 +111,15 @@ void generate(int nwords,
 			p_open = 1;
 		}
 
-		if (int_link || ext_link) {
-			evbuffer_add_printf(buf, "<a href=\"/%d.html\">%s</a> "
-					, (int)(rand_r(seed) % links_total), w);
+		if (int_link) {
+			evbuffer_add_printf(buf, "<a href=\"/%d.html\">%s</a> ",
+					(int)(rand_r(seed) % links_total), w);
+		} else if (ext_link) {
+			evbuffer_add_printf(buf, "<a href=\"http://%s%d%s/%d.html\">%s</a> ", 
+					ext_prefix, 
+					rand_r(seed) % ext_servers,
+					ext_suffix,
+					(int)(rand_r(seed) % links_total), w);
 		} else {
 			evbuffer_add_printf(buf, "%s ", w);
 		}
@@ -149,9 +158,12 @@ void gencb(struct evhttp_request * req, void * data)
 #else
 			 &text_state[rand_r(&seed) % num_states]  /* base text */,
 #endif
-			1 + rand_r(&seed) % config.intern_links, 
-			1 + rand_r(&seed) % config.extern_links,
-			1 + rand_r(&seed) % config.links_total       /* links total    */,
+			config.intern_links, 
+			config.extern_links,
+			config.links_total,
+			config.extern_links_prefix,
+			config.extern_links_suffix,
+			config.extern_links_servers,
 			&seed,
 			answer
 			);
