@@ -34,7 +34,6 @@ load_defaults(struct GenConfig * conf)
 {
 	conf->daemon_port    = 8083;
 	conf->words_per_page = 1000;
-	conf->links_per_page = 50;
 	conf->links_total    = 100000;
 	conf->worker_threads = 1;
 }
@@ -44,8 +43,10 @@ print_config(struct GenConfig * conf)
 {
 	fprintf(stderr, "daemon_port %d\n",     conf->daemon_port);
 	fprintf(stderr, "words_per_page %d\n",  conf->words_per_page);
-	fprintf(stderr, "links_per_page %d\n",  conf->links_per_page);
-	fprintf(stderr, "links_per_page %lf\n", conf->links_per_page_v);
+	fprintf(stderr, "intern links %d\n",    conf->intern_links);
+	fprintf(stderr, "extern links %d\n",    conf->extern_links);
+	fprintf(stderr, "intern probabil %lf\n",conf->intern_links_probability);
+	fprintf(stderr, "extern probabil %lf\n",conf->extern_links_probability);
 	fprintf(stderr, "links_total %d\n",     conf->links_total);
 	fprintf(stderr, "worker_threads %d\n",  conf->worker_threads);
 }
@@ -56,15 +57,29 @@ void load_config(struct GenConfig * conf, const char * config_name)
 	config_data_t c = config_load(config_name);
 	config_try_set_int(c, "generator", "daemon_port",       conf->daemon_port);
 	config_try_set_int(c, "generator", "words_per_page",    conf->words_per_page);
-	config_try_set_double(c, "generator", "links_per_page", conf->links_per_page_v);
+	config_try_set_double(c, "generator", "extern_links_probability", 
+			conf->extern_links_probability);
+	config_try_set_double(c, "generator", "intern_links_probability",
+			conf->intern_links_probability);
 	config_try_set_int(c, "generator", "links_total",       conf->links_total);
 	config_try_set_int(c, "generator", "worker_threads",    conf->worker_threads);
 
-	if (conf->links_per_page_v <= 0 || conf->links_per_page_v >= 1.0) {
-		conf->links_per_page_v = 0.1;
+	if (conf->intern_links_probability <= 0 || 
+			conf->intern_links_probability >= 1.0) 
+	{
+		conf->intern_links_probability = 0.1;
 	}
 
-	conf->links_per_page = (int)((double)RAND_MAX * conf->links_per_page_v);
+	if (conf->intern_links_probability < 0 ||
+			 conf->intern_links_probability >= 1.0)
+	{
+		conf->intern_links_probability = 0.01;
+	}
+
+	conf->intern_links = (int)((double)RAND_MAX 
+			* conf->intern_links_probability);
+	conf->extern_links = (int)((double)RAND_MAX
+			* conf->extern_links_probability);
 	print_config(conf);
 }
 

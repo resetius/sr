@@ -65,7 +65,8 @@ void generate(int nwords,
 #else
 		TextState * state,
 #endif
-		int links_per_page,
+		int intern_links,
+		int extern_links,
 		int links_total, 
 		unsigned int * seed,
 		struct evbuffer * buf
@@ -76,6 +77,7 @@ void generate(int nwords,
 	const char *prefix[NPREF], *w = 0;
 	int i, nmatch;
 	int link;
+	int ext_link, int_link;
 	int p_open = 0;
 
 	for (i = 0; i < NPREF; i++)     /* reset initial prefix */
@@ -95,7 +97,8 @@ void generate(int nwords,
 		if (strcmp(w, NONWORD) == 0)
 			break;
 
-		link = (rand_r(seed) < (links_per_page));
+		int_link = (rand_r(seed) < (intern_links));
+		ext_link = (rand_r(seed) < (extern_links));
 
 		if (rand_r(seed) < RAND_MAX / 50) {
 			if (p_open) {
@@ -105,9 +108,9 @@ void generate(int nwords,
 			p_open = 1;
 		}
 
-		if (link) {
-			evbuffer_add_printf(buf, "<a href=\"/%d.html\">%s</a> ",
-								(int)(rand_r(seed) % links_total), w);
+		if (int_link || ext_link) {
+			evbuffer_add_printf(buf, "<a href=\"/%d.html\">%s</a> "
+					, (int)(rand_r(seed) % links_total), w);
 		} else {
 			evbuffer_add_printf(buf, "%s ", w);
 		}
@@ -146,7 +149,8 @@ void gencb(struct evhttp_request * req, void * data)
 #else
 			 &text_state[rand_r(&seed) % num_states]  /* base text */,
 #endif
-			1 + rand_r(&seed) %  config.links_per_page   /* links per page */, 
+			1 + rand_r(&seed) % config.intern_links, 
+			1 + rand_r(&seed) % config.extern_links,
 			1 + rand_r(&seed) % config.links_total       /* links total    */,
 			&seed,
 			answer

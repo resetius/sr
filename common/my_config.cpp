@@ -60,7 +60,7 @@ config_load(const string & file)
 			section[strlen(section) - 1] = 0;
 			//fprintf(stderr, "section -> %s\n", section);
 			cur = &r[section];
-		} else if (*buf == '#') {
+		} else if (*buf == '#' || *buf == ';') {
 			continue;
 		} else if (cur) {
 			char * k, * v;

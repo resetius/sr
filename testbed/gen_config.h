@@ -34,8 +34,10 @@ extern "C" {
 struct GenConfig {
 	int daemon_port;
 	int words_per_page;
-	int links_per_page;
-	double links_per_page_v;
+	int intern_links;
+	int extern_links;
+	double intern_links_probability;
+	double extern_links_probability;
 	int links_total;
 	int worker_threads;
 };
