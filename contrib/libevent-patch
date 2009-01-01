@@ -1,0 +1,288 @@
+diff -Naur libevent-1.4.7-stable/evhttp.h libevent/evhttp.h
+--- libevent-1.4.7-stable/evhttp.h	2008-06-30 05:29:44.000000000 +0400
++++ libevent/evhttp.h	2008-09-06 15:16:09.090000000 +0400
+@@ -114,6 +114,23 @@
+  */
+ void evhttp_free(struct evhttp* http);
+ 
++/**
++ * Add a worker.
++ *
++ * Usage:
++ * struct event_base * base = evhttp_add_worker(http);
++ * ...
++ * Then create worker thread and run:
++ * event_base_loop(base, flags);
++ *
++ * Functions evhttp_set_gencb, evhttp_del_cb, evhttp_set_cb, evhttp_set_timeout
++ * must be called AFTER evhttp_add_worker.
++ *
++ * @param http a pointer to an evhttp object.
++ * @return event_base on success, NULL on failure.
++ */
++struct event_base * evhttp_add_worker(struct evhttp * http);
++
+ /** Set a callback for a specified URI */
+ void evhttp_set_cb(struct evhttp *, const char *,
+     void (*)(struct evhttp_request *, void *), void *);
+diff -Naur libevent-1.4.7-stable/http-internal.h libevent/http-internal.h
+--- libevent-1.4.7-stable/http-internal.h	2008-06-30 05:29:44.000000000 +0400
++++ libevent/http-internal.h	2008-09-06 13:32:53.064000000 +0400
+@@ -81,7 +81,7 @@
+ 
+ 	TAILQ_HEAD(evcon_requestq, evhttp_request) requests;
+ 	
+-						   void (*cb)(struct evhttp_connection *, void *);
++	void (*cb)(struct evhttp_connection *, void *);
+ 	void *cb_arg;
+ 	
+ 	void (*closecb)(struct evhttp_connection *, void *);
+@@ -109,18 +109,37 @@
+ 	struct event  bind_ev;
+ };
+ 
++/* for multiple workers: */
++struct task {
++	TAILQ_ENTRY(task) next;
++
++	struct sockaddr_storage ss;
++	int fd;
++};
++
++#include <pthread.h>
++
+ struct evhttp {
+ 	TAILQ_HEAD(boundq, evhttp_bound_socket) sockets;
+ 
+ 	TAILQ_HEAD(httpcbq, evhttp_cb) callbacks;
+-        struct evconq connections;
++	struct evconq connections;
+ 
+-        int timeout;
++	int timeout;
+ 
+ 	void (*gencb)(struct evhttp_request *req, void *);
+ 	void *gencbarg;
+ 
+ 	struct event_base *base;
++
++	/* for multiple workers: */
++	pthread_mutex_t lock;
++	TAILQ_HEAD(taskq, task) tasks;
++	struct evhttp * next;
++	struct evhttp * cur;
++	struct event notify;
++	int wakeup;
++	int rcv;
+ };
+ 
+ /* resets the connection; can be reused for more requests */
+diff -Naur libevent-1.4.7-stable/http.c libevent/http.c
+--- libevent-1.4.7-stable/http.c	2008-08-24 17:30:51.000000000 +0400
++++ libevent/http.c	2009-01-01 17:43:47.642000000 +0300
+@@ -2181,6 +2181,39 @@
+ }
+ 
+ static void
++new_worker_task(struct evhttp * http, int fd, struct sockaddr_storage * ss)
++{
++	struct task * task = calloc(1, sizeof(struct task));
++	task->ss = *ss;
++	task->fd = fd;
++
++	pthread_mutex_lock(&http->lock);
++	TAILQ_INSERT_TAIL(&http->tasks, task, next);
++	pthread_mutex_unlock(&http->lock);
++}
++
++static void
++notify_worker(int fd, short ev, void * arg)
++{
++	struct evhttp * http = arg;
++	struct task * task;
++	char byte;
++	if (read(fd, &byte, 1) != 1) {
++		/* ignore */
++		return;
++	}
++
++	pthread_mutex_lock(&http->lock);
++	task = TAILQ_FIRST(&http->tasks);
++	TAILQ_REMOVE(&http->tasks, task, next);
++	pthread_mutex_unlock(&http->lock);
++
++	evhttp_get_request(http, task->fd, (struct sockaddr *)&(task->ss), 
++			sizeof(struct sockaddr_storage));
++	free(task);
++}
++
++static void
+ accept_socket(int fd, short what, void *arg)
+ {
+ 	struct evhttp *http = arg;
+@@ -2196,7 +2229,14 @@
+ 	if (evutil_make_socket_nonblocking(nfd) < 0)
+ 		return;
+ 
+-	evhttp_get_request(http, nfd, (struct sockaddr *)&ss, addrlen);
++	if (!http->cur) {
++		evhttp_get_request(http, nfd, (struct sockaddr *)&ss, addrlen);
++	} else {
++		/* send it to a worker thread */
++		new_worker_task(http->cur, nfd, &ss);
++		write(http->cur->wakeup, "", 1);
++		http->cur = http->cur->next;
++	}
+ }
+ 
+ int
+@@ -2267,6 +2307,9 @@
+ 	TAILQ_INIT(&http->sockets);
+ 	TAILQ_INIT(&http->callbacks);
+ 	TAILQ_INIT(&http->connections);
++	TAILQ_INIT(&http->tasks);
++
++	pthread_mutex_init(&http->lock, 0);
+ 
+ 	return (http);
+ }
+@@ -2327,7 +2370,18 @@
+ 		free(http_cb->what);
+ 		free(http_cb);
+ 	}
+-	
++
++	/* free workers */
++	if (http->cur) {
++		struct evhttp * cur = http->next;
++		do {
++			struct evhttp * next = cur->next;
++			evhttp_free(cur);
++			cur = next;
++		} while (cur->next != http->next);
++		evhttp_free(cur);
++	}
++
+ 	free(http);
+ }
+ 
+@@ -2335,6 +2389,16 @@
+ evhttp_set_timeout(struct evhttp* http, int timeout_in_secs)
+ {
+ 	http->timeout = timeout_in_secs;
++
++	/* set timeout to workers */
++	if (http->cur) {
++		struct evhttp * cur = http->next;
++		do {
++			evhttp_set_timeout(cur, timeout_in_secs);
++			cur = cur->next;
++		} while (cur->next != http->next);
++		evhttp_set_timeout(cur, timeout_in_secs);
++	}
+ }
+ 
+ void
+@@ -2351,6 +2415,16 @@
+ 	http_cb->cbarg = cbarg;
+ 
+ 	TAILQ_INSERT_TAIL(&http->callbacks, http_cb, next);
++
++	/* set callback to workers */
++	if (http->cur) {
++		struct evhttp * cur = http->next;
++		do {
++			evhttp_set_cb(cur, uri, cb, cbarg);
++			cur = cur->next;
++		} while (cur->next != http->next);
++		evhttp_set_cb(cur, uri, cb, cbarg);
++	}
+ }
+ 
+ int
+@@ -2369,6 +2443,16 @@
+ 	free(http_cb->what);
+ 	free(http_cb);
+ 
++	/* del callback from workers */
++	if (http->cur) {
++		struct evhttp * cur = http->next;
++		do {
++			evhttp_del_cb(cur, uri);
++			cur = cur->next;
++		} while (cur->next != http->next);
++		evhttp_del_cb(cur, uri);
++	}
++
+ 	return (0);
+ }
+ 
+@@ -2378,6 +2462,16 @@
+ {
+ 	http->gencb = cb;
+ 	http->gencbarg = cbarg;
++
++	/* set timeout to workers */
++	if (http->cur) {
++		struct evhttp * cur = http->next;
++		do {
++			evhttp_set_gencb(cur, cb, cbarg);
++			cur = cur->next;
++		} while (cur->next != http->next);
++		evhttp_set_gencb(cur, cb, cbarg);
++	}
+ }
+ 
+ /*
+@@ -2758,3 +2852,51 @@
+ 
+ 	return (res);
+ }
++
++
++/* for multiple workers: */
++struct event_base *
++evhttp_add_worker(struct evhttp * http)
++{
++	struct event_base * base = 0;
++	struct evhttp * worker = 0;
++	struct evhttp * cur;
++	int fds[2];
++
++	base = event_base_new();
++	if (!base) goto fail;
++	worker = evhttp_new(base);
++	if (!worker) goto fail;
++	
++	if (pipe(fds) != 0) goto fail;
++
++	worker->wakeup = fds[1];
++	worker->rcv    = fds[0];
++
++	event_set(&worker->notify, worker->rcv, 
++			EV_READ | EV_PERSIST, notify_worker, worker);
++	event_base_set(base, &worker->notify);
++	event_add(&worker->notify, 0);
++
++	if (http->next == 0) {
++		http->next   = worker;
++		http->cur    = worker;
++		worker->next = worker;
++	} else {
++		cur = http;
++		do {
++			cur = cur->next;
++		} while (cur->next != http->next);
++		cur->next    = worker;
++		worker->next = http->next;
++	}
++
++	return base;
++
++fail:
++	if (base) event_base_free(base);
++	if (worker) evhttp_free(worker);
++
++	return 0;
++}
++

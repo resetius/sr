@@ -12,7 +12,7 @@ ADD_CUSTOM_COMMAND(OUTPUT libevent-bin/Makefile
 	)
 
 ADD_CUSTOM_COMMAND(OUTPUT ../lib/libevent.a
-	COMMAND cd libevent-bin && make && cp .libs/libevent.a ../../lib
+	COMMAND cd libevent-bin && make libevent.la && cp .libs/libevent.a ../../lib
 	DEPENDS libevent-bin/Makefile ${libevent_src} 
 	)
 
