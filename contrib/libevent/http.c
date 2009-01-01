@@ -199,7 +199,7 @@ extern int debug;
 static int socket_connect(int fd, const char *address, unsigned short port);
 static int bind_socket_ai(struct addrinfo *, int reuse);
 static int bind_socket(const char *, u_short, int reuse);
-static void name_from_addr(struct sockaddr *, socklen_t, char *, char *);
+static void name_from_addr(struct sockaddr *, socklen_t, char **, char **);
 static int evhttp_associate_new_request_with_connection(
 	struct evhttp_connection *evcon);
 static void evhttp_connection_start_detectclose(
@@ -368,7 +368,7 @@ evhttp_connected(struct evhttp_connection *evcon)
 }
 
 /*
- * Create the headers need for an HTTP request
+ * Create the headers needed for an HTTP request
  */
 static void
 evhttp_make_header_request(struct evhttp_connection *evcon,
@@ -377,7 +377,6 @@ evhttp_make_header_request(struct evhttp_connection *evcon,
 	char line[1024];
 	const char *method;
 	
-	evhttp_remove_header(req->output_headers, "Accept-Encoding");
 	evhttp_remove_header(req->output_headers, "Proxy-Connection");
 
 	/* Generate request line */
@@ -1039,6 +1038,13 @@ evhttp_connection_set_local_address(struct evhttp_connection *evcon,
 		event_err(1, "%s: strdup", __func__);
 }
 
+void
+evhttp_connection_set_local_port(struct evhttp_connection *evcon,
+    unsigned short port)
+{
+	assert(evcon->state == EVCON_DISCONNECTED);
+	evcon->bind_port = port;
+}
 
 static void
 evhttp_request_dispatch(struct evhttp_connection* evcon)
@@ -1469,6 +1475,7 @@ evhttp_parse_headers(struct evhttp_request *req, struct evbuffer* buffer)
 		if (*line == ' ' || *line == '\t') {
 			if (evhttp_append_to_last_header(headers, line) == -1)
 				goto error;
+			free(line);
 			continue;
 		}
 
@@ -1732,7 +1739,8 @@ evhttp_connection_connect(struct evhttp_connection *evcon)
 	assert(!(evcon->flags & EVHTTP_CON_INCOMING));
 	evcon->flags |= EVHTTP_CON_OUTGOING;
 	
-	evcon->fd = bind_socket(evcon->bind_address, 0 /*port*/, 0 /*reuse*/);
+	evcon->fd = bind_socket(
+		evcon->bind_address, evcon->bind_port, 0 /*reuse*/);
 	if (evcon->fd == -1) {
 		event_debug(("%s: failed to bind to \"%s\"",
 			__func__, evcon->bind_address));
@@ -1899,8 +1907,6 @@ void
 evhttp_send_reply(struct evhttp_request *req, int code, const char *reason,
     struct evbuffer *databuf)
 {
-	/* set up to watch for client close */
-	evhttp_connection_start_detectclose(req->evcon);
 	evhttp_response_code(req, code, reason);
 	
 	evhttp_send(req, databuf);
@@ -1910,8 +1916,6 @@ void
 evhttp_send_reply_start(struct evhttp_request *req, int code,
     const char *reason)
 {
-	/* set up to watch for client close */
-	evhttp_connection_start_detectclose(req->evcon);
 	evhttp_response_code(req, code, reason);
 	if (req->major == 1 && req->minor == 1) {
 		/* use chunked encoding for HTTP/1.1 */
@@ -2579,15 +2583,23 @@ evhttp_get_request_connection(
 	int fd, struct sockaddr *sa, socklen_t salen)
 {
 	struct evhttp_connection *evcon;
-	char hostname[NI_MAXHOST], portname[NI_MAXSERV];
-	hostname[0] = portname[0] = 0;
+	char *hostname = NULL, *portname = NULL;
 
-	name_from_addr(sa, salen, hostname, portname);
+	name_from_addr(sa, salen, &hostname, &portname);
+	if (hostname == NULL || portname == NULL) {
+		if (hostname) free(hostname);
+		if (portname) free(portname);
+		return (NULL);
+	}
+
 	event_debug(("%s: new request from %s:%s on %d\n",
 			__func__, hostname, portname, fd));
 
 	/* we need a connection object to put the http request on */
-	if ((evcon = evhttp_connection_new(hostname, atoi(portname))) == NULL)
+	evcon = evhttp_connection_new(hostname, atoi(portname));
+	free(hostname);
+	free(portname);
+	if (evcon == NULL)
 		return (NULL);
 
 	/* associate the base if we have one*/
@@ -2684,15 +2696,15 @@ addr_from_name(char *address)
 
 static void
 name_from_addr(struct sockaddr *sa, socklen_t salen,
-    char *ntop, char * strport)
+    char **phost, char **pport)
 {
-//	char ntop[NI_MAXHOST];
-//	char strport[NI_MAXSERV];
+	char ntop[NI_MAXHOST];
+	char strport[NI_MAXSERV];
 	int ni_result;
 
 #ifdef HAVE_GETNAMEINFO
 	ni_result = getnameinfo(sa, salen,
-		ntop, NI_MAXHOST, strport, NI_MAXSERV,
+		ntop, sizeof(ntop), strport, sizeof(strport),
 		NI_NUMERICHOST|NI_NUMERICSERV);
 	
 	if (ni_result != 0) {
@@ -2709,12 +2721,12 @@ name_from_addr(struct sockaddr *sa, socklen_t salen,
 	if (ni_result != 0)
 			return;
 #endif
-//	*phost = ntop;
-//	*pport = strport;
+	*phost = strdup(ntop);
+	*pport = strdup(strport);
 }
 
-/* Either connect or bind */
-
+/* Create a non-blocking socket and bind it */
+/* todo: rename this function */
 static int
 bind_socket_ai(struct addrinfo *ai, int reuse)
 {
@@ -2744,9 +2756,11 @@ bind_socket_ai(struct addrinfo *ai, int reuse)
 		    (void *)&on, sizeof(on));
 	}
 
-	r = bind(fd, ai->ai_addr, ai->ai_addrlen);
-	if (r == -1)
-		goto out;
+	if (ai != NULL) {
+		r = bind(fd, ai->ai_addr, ai->ai_addrlen);
+		if (r == -1)
+			goto out;
+	}
 
 	return (fd);
 
@@ -2799,7 +2813,13 @@ static int
 bind_socket(const char *address, u_short port, int reuse)
 {
 	int fd;
-	struct addrinfo *aitop = make_addrinfo(address, port);
+	struct addrinfo *aitop = NULL;
+
+	/* just create an unbound socket */
+	if (address == NULL && port == 0)
+		return bind_socket_ai(NULL, 0);
+		
+	aitop = make_addrinfo(address, port);
 
 	if (aitop == NULL)
 		return (-1);

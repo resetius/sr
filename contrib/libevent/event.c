@@ -79,7 +79,7 @@ extern const struct eventop win32ops;
 #endif
 
 /* In order of preference */
-const struct eventop *eventops[] = {
+static const struct eventop *eventops[] = {
 #ifdef HAVE_EVENT_PORTS
 	&evportops,
 #endif
@@ -472,7 +472,10 @@ event_base_loop(struct event_base *base, int flags)
 	struct timeval *tv_p;
 	int res, done;
 
-	if (&base->sig.ev_signal_added)
+	/* clear time cache */
+	base->tv_cache.tv_sec = 0;
+
+	if (base->sig.ev_signal_added)
 		evsignal_base = base;
 	done = 0;
 	while (!done) {
@@ -513,10 +516,10 @@ event_base_loop(struct event_base *base, int flags)
 		}
 		
 		/* If we have no events, we just exit */
-//		if (!event_haveevents(base)) {
-//			event_debug(("%s: no events registered.", __func__));
-//			return (1);
-//		}
+		if (!event_haveevents(base)) {
+			event_debug(("%s: no events registered.", __func__));
+			return (1);
+		}
 
 		/* update last old time */
 		gettime(base, &base->event_tv);
@@ -539,6 +542,9 @@ event_base_loop(struct event_base *base, int flags)
 		} else if (flags & EVLOOP_NONBLOCK)
 			done = 1;
 	}
+
+	/* clear time cache */
+	base->tv_cache.tv_sec = 0;
 
 	event_debug(("%s: asked to terminate loop.", __func__));
 	return (0);
@@ -779,7 +785,7 @@ event_add(struct event *ev, const struct timeval *tv)
 		event_queue_insert(base, ev, EVLIST_TIMEOUT);
 	}
 
-	return (0);
+	return (res);
 }
 
 int

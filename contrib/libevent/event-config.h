@@ -9,13 +9,13 @@
 /* config.h.in.  Generated from configure.in by autoheader.  */
 
 /* Define if clock_gettime is available in libc */
-/* #undef _EVENT_DNS_USE_CPU_CLOCK_FOR_ID */
+#define _EVENT_DNS_USE_CPU_CLOCK_FOR_ID 1
 
 /* Define is no secure id variant is available */
-#define _EVENT_DNS_USE_GETTIMEOFDAY_FOR_ID 1
+/* #undef _EVENT_DNS_USE_GETTIMEOFDAY_FOR_ID */
 
 /* Define to 1 if you have the `clock_gettime' function. */
-/* #undef _EVENT_HAVE_CLOCK_GETTIME */
+#define _EVENT_HAVE_CLOCK_GETTIME 1
 
 /* Define if /dev/poll is available */
 /* #undef _EVENT_HAVE_DEVPOLL */
@@ -24,10 +24,10 @@
 #define _EVENT_HAVE_DLFCN_H 1
 
 /* Define if your system supports the epoll system calls */
-/* #undef _EVENT_HAVE_EPOLL */
+#define _EVENT_HAVE_EPOLL 1
 
 /* Define to 1 if you have the `epoll_ctl' function. */
-/* #undef _EVENT_HAVE_EPOLL_CTL */
+#define _EVENT_HAVE_EPOLL_CTL 1
 
 /* Define if your system supports event ports */
 /* #undef _EVENT_HAVE_EVENT_PORTS */
@@ -54,16 +54,16 @@
 #define _EVENT_HAVE_INTTYPES_H 1
 
 /* Define to 1 if you have the `kqueue' function. */
-#define _EVENT_HAVE_KQUEUE 1
+/* #undef _EVENT_HAVE_KQUEUE */
 
 /* Define to 1 if you have the `nsl' library (-lnsl). */
-/* #undef _EVENT_HAVE_LIBNSL */
+#define _EVENT_HAVE_LIBNSL 1
 
 /* Define to 1 if you have the `resolv' library (-lresolv). */
 #define _EVENT_HAVE_LIBRESOLV 1
 
 /* Define to 1 if you have the `rt' library (-lrt). */
-/* #undef _EVENT_HAVE_LIBRT */
+#define _EVENT_HAVE_LIBRT 1
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
 /* #undef _EVENT_HAVE_LIBSOCKET */
@@ -117,7 +117,7 @@
 #define _EVENT_HAVE_STRING_H 1
 
 /* Define to 1 if you have the `strlcpy' function. */
-#define _EVENT_HAVE_STRLCPY 1
+/* #undef _EVENT_HAVE_STRLCPY */
 
 /* Define to 1 if you have the `strsep' function. */
 #define _EVENT_HAVE_STRSEP 1
@@ -135,10 +135,10 @@
 /* #undef _EVENT_HAVE_SYS_DEVPOLL_H */
 
 /* Define to 1 if you have the <sys/epoll.h> header file. */
-/* #undef _EVENT_HAVE_SYS_EPOLL_H */
+#define _EVENT_HAVE_SYS_EPOLL_H 1
 
 /* Define to 1 if you have the <sys/event.h> header file. */
-#define _EVENT_HAVE_SYS_EVENT_H 1
+/* #undef _EVENT_HAVE_SYS_EVENT_H */
 
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #define _EVENT_HAVE_SYS_IOCTL_H 1
@@ -198,7 +198,11 @@
 #define _EVENT_HAVE_VASPRINTF 1
 
 /* Define if kqueue works correctly with pipes */
-#define _EVENT_HAVE_WORKING_KQUEUE 1
+/* #undef _EVENT_HAVE_WORKING_KQUEUE */
+
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#define _EVENT_LT_OBJDIR ".libs/"
 
 /* Name of package */
 #define _EVENT_PACKAGE "libevent"
@@ -222,7 +226,7 @@
 #define _EVENT_SIZEOF_INT 4
 
 /* The size of `long', as computed by sizeof. */
-#define _EVENT_SIZEOF_LONG 4
+#define _EVENT_SIZEOF_LONG 8
 
 /* The size of `long long', as computed by sizeof. */
 #define _EVENT_SIZEOF_LONG_LONG 8
@@ -237,7 +241,7 @@
 #define _EVENT_TIME_WITH_SYS_TIME 1
 
 /* Version number of package */
-#define _EVENT_VERSION "1.4.7-stable"
+#define _EVENT_VERSION "1.4.9-stable"
 
 /* Define to appropriate substitue if compiler doesnt have __func__ */
 /* #undef _EVENT___func__ */
