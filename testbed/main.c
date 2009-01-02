@@ -1,5 +1,5 @@
-/*
- * Copyright 2008 Alexey Ozeritsky <aozeritsky@gmail.com>
+/**
+ * Copyright 2008, 2009 Alexey Ozeritsky <aozeritsky@gmail.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -55,6 +55,7 @@
 
 #include "markov.h"
 #include "gen_config.h"
+#include "my_signal.h"
 
 static struct GenConfig config;
 
@@ -205,6 +206,7 @@ int main(int argc, char ** argv)
 	struct evhttp * http;
 
 	load_config(&config, "gen.ini");
+	set_signal(SIGPIPE, SIG_IGN);
 
 	nthreads = config.worker_threads;
 	if (nthreads <= 0) nthreads = 1;
