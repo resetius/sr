@@ -58,6 +58,12 @@
 
 static struct GenConfig config;
 
+inline int my_rand_r(unsigned * seed)
+{
+	*seed = *seed * 1103515245 + 12345;
+	return (*seed % ((u_int)RAND_MAX + 1));
+}
+
 /* generate: produce html-output */
 void generate(int nwords, 
 #ifdef IDEAL_HASHING		
@@ -94,16 +100,16 @@ void generate(int nwords,
 #endif
 		nmatch = 0;
 		for (suf = sp->suf; suf != NULL; suf = suf->next)
-			if (rand_r(seed) % ++nmatch == 0) /* prob = 1/nmatch */
+			if (my_rand_r(seed) % ++nmatch == 0) /* prob = 1/nmatch */
 				w = suf->word;
 
 		if (strcmp(w, NONWORD) == 0)
 			break;
 
-		int_link = (rand_r(seed) < (intern_links));
-		ext_link = (rand_r(seed) < (extern_links));
+		int_link = (my_rand_r(seed) < (intern_links));
+		ext_link = (my_rand_r(seed) < (extern_links));
 
-		if (rand_r(seed) < RAND_MAX / 50) {
+		if (my_rand_r(seed) < RAND_MAX / 50) {
 			if (p_open) {
 				evbuffer_add_printf(buf, "</p>\n");
 			}
@@ -113,18 +119,18 @@ void generate(int nwords,
 
 		if (int_link) {
 			evbuffer_add_printf(buf, "<a href=\"/%d.html\">%s</a> ",
-					(int)(rand_r(seed) % links_total), w);
+					(int)(my_rand_r(seed) % links_total), w);
 		} else if (ext_link) {
 			evbuffer_add_printf(buf, "<a href=\"http://%s%d%s/%d.html\">%s</a> ", 
 					ext_prefix, 
-					rand_r(seed) % ext_servers,
+					my_rand_r(seed) % ext_servers,
 					ext_suffix,
-					(int)(rand_r(seed) % links_total), w);
+					(int)(my_rand_r(seed) % links_total), w);
 		} else {
 			evbuffer_add_printf(buf, "%s ", w);
 		}
 
-		if (rand_r(seed) < RAND_MAX / 3) {
+		if (my_rand_r(seed) < RAND_MAX / 3) {
 			evbuffer_add_printf(buf, "\n");
 		}
 		memmove(prefix, prefix + 1, (NPREF - 1) * sizeof(prefix[0]));
@@ -147,16 +153,16 @@ void gencb(struct evhttp_request * req, void * data)
 		seed = time(0);
 	}
 
-	nwords   = rand_r(&seed) % config.words_per_page;
+	nwords   = my_rand_r(&seed) % config.words_per_page;
 
 	evbuffer_expand(answer, nwords * 10);
 	evbuffer_add_printf(answer, "<html><head></head><body>\n"
 			"<title>%u</title>\n", seed);
 	generate(nwords,
 #ifdef IDEAL_HASHING
-			 &ideal_state[rand_r(&seed) % num_states] /* base text */,
+			 &ideal_state[my_rand_r(&seed) % num_states] /* base text */,
 #else
-			 &text_state[rand_r(&seed) % num_states]  /* base text */,
+			 &text_state[my_rand_r(&seed) % num_states]  /* base text */,
 #endif
 			config.intern_links, 
 			config.extern_links,
