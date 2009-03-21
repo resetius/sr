@@ -58,8 +58,8 @@
 
 #include "markov.h"
 
-static const char * NONWORD = "\n";  /* cannot appear as real word */
-static int num_states = 0;
+const char * NONWORD = "\n";  /* cannot appear as real word */
+int num_states = 0;
 TextState text_state[MARKOV_MAXFILES];
 IdealState ideal_state[MARKOV_MAXFILES];
 
