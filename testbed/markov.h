@@ -38,8 +38,8 @@
 extern "C" {
 #endif
 
-#define MAXFILES 1000
-#define MAXPATH 32768
+#define MARKOV_MAXFILES 100
+#define MARKOV_MAXPATH 3276
 
 	enum {
 		NPREF   = 2,    /* number of prefix words */

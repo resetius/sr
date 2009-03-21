@@ -58,12 +58,12 @@
 
 #include "markov.h"
 
-const char * NONWORD = "\n";  /* cannot appear as real word */
-int num_states = 0;
-TextState text_state[MAXFILES];
-IdealState ideal_state[MAXFILES];
+static const char * NONWORD = "\n";  /* cannot appear as real word */
+static int num_states = 0;
+static TextState text_state[MARKOV_MAXFILES];
+static IdealState ideal_state[MARKOV_MAXFILES];
 
-const int MULTIPLIER = 31;  /* for hash() */
+static const int MULTIPLIER = 31;  /* for hash() */
 
 /* hash: compute hash value for array of NPREF strings */
 static unsigned long hash_(const char *s[NPREF], int nhash, int mult)
@@ -281,7 +281,7 @@ void init_markov(const char * text_folder)
 	DIR *dp;
 	struct dirent *dir_entry;
 	struct stat stat_info;
-	char buf[MAXPATH];
+	char buf[MARKOV_MAXPATH];
 	int num = 0;
 
 	if ((dp = opendir(text_folder)) == NULL) {
@@ -309,3 +309,4 @@ void init_markov(const char * text_folder)
 
 	fprintf(stderr, "server started\n");
 }
+
