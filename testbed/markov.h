@@ -80,8 +80,8 @@ extern "C" {
 	};
 
 	extern const char * NONWORD;
-	extern TextState text_state[MAXFILES];
-	extern IdealState ideal_state[MAXFILES];
+	extern TextState  text_state[MARKOV_MAXFILES];
+	extern IdealState ideal_state[MARKOV_MAXFILES];
 	extern int num_states;
 
 	State* lookup(const char *prefix[NPREF], State   **statetab, int create);

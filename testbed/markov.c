@@ -60,8 +60,8 @@
 
 static const char * NONWORD = "\n";  /* cannot appear as real word */
 static int num_states = 0;
-static TextState text_state[MARKOV_MAXFILES];
-static IdealState ideal_state[MARKOV_MAXFILES];
+TextState text_state[MARKOV_MAXFILES];
+IdealState ideal_state[MARKOV_MAXFILES];
 
 static const int MULTIPLIER = 31;  /* for hash() */
 
