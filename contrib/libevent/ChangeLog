@@ -1,3 +1,14 @@
+Changes in 1.4.10-stable:
+ o clean up buffered http connection data on reset; reported by Brian O'Kelley
+ o bug fix and potential race condition in signal handling; from Alexander Drozdov
+ o rename the Solaris event ports backend to evport
+ o support compilation on Haiku
+ o fix signal processing when a signal callback delivers a signal; from Alexander Drozdov
+ o const-ify some arguments to evdns functions.
+ o off-by-one error in epoll_recalc; reported by Victor Goya
+ o include Doxyfile in tar ball; from Jeff Garzik
+ o correctly parse queries with encoded \r, \n or + characters
+
 Changes in 1.4.9-stable:
  o event_add would not return error for some backends; from Dean McNamee
  o Clear the timer cache on entering the event loop; reported by Victor Chang

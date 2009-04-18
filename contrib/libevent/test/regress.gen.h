@@ -1,9 +1,9 @@
 /*
- * Automatically generated from ../../libevent/test/regress.rpc
+ * Automatically generated from ./regress.rpc
  */
 
-#ifndef _______LIBEVENT_TEST_REGRESS_RPC_
-#define _______LIBEVENT_TEST_REGRESS_RPC_
+#ifndef ___REGRESS_RPC_
+#define ___REGRESS_RPC_
 
 #include <event-config.h>
 #ifdef _EVENT_HAVE_STDINT_H
@@ -175,4 +175,4 @@ int run_fixed_bytes_assign(struct run *, const uint8_t *);
 int run_fixed_bytes_get(struct run *, uint8_t **);
 /* --- run done --- */
 
-#endif  /* _______LIBEVENT_TEST_REGRESS_RPC_ */
+#endif  /* ___REGRESS_RPC_ */

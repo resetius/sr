@@ -4,7 +4,7 @@ AM_CFLAGS = -I$(top_srcdir) -I$(top_srcdir)/compat
 
 EXTRA_DIST = regress.rpc regress.gen.h regress.gen.c
 
-noinst_PROGRAMS = test-init test-eof test-weof test-time regress bench
+noinst_PROGRAMS = test-init test-eof test-weof test-time regress bench bench_http
 
 BUILT_SOURCES = regress.gen.c regress.gen.h
 test_init_SOURCES = test-init.c
@@ -21,6 +21,9 @@ regress_SOURCES = regress.c regress.h regress_http.c regress_dns.c \
 regress_LDADD = ../libevent.la
 bench_SOURCES = bench.c
 bench_LDADD = ../libevent.la
+bench_http_SOURCES = bench_http.c
+bench_http_LDADD = ../libevent.la
+
 
 regress.gen.c regress.gen.h: regress.rpc $(top_srcdir)/event_rpcgen.py
 	$(top_srcdir)/event_rpcgen.py $(srcdir)/regress.rpc || echo "No Python installed"

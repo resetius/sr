@@ -71,7 +71,7 @@ static void evsignal_handler(int sig);
 static void
 evsignal_cb(int fd, short what, void *arg)
 {
-	static char signals[100];
+	static char signals[1];
 #ifdef WIN32
 	SSIZE_T n;
 #else
@@ -310,6 +310,7 @@ evsignal_process(struct event_base *base)
 		ncalls = sig->evsigcaught[i];
 		if (ncalls == 0)
 			continue;
+		sig->evsigcaught[i] -= ncalls;
 
 		for (ev = TAILQ_FIRST(&sig->evsigevents[i]);
 		    ev != NULL; ev = next_ev) {
@@ -319,7 +320,6 @@ evsignal_process(struct event_base *base)
 			event_active(ev, EV_SIGNAL, ncalls);
 		}
 
-		sig->evsigcaught[i] = 0;
 	}
 }
 
